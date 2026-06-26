@@ -1,0 +1,12 @@
+title = "Sherin gitleaks config"
+
+[allowlist]
+description = "Allow Sherin documentation and CI placeholder examples."
+regexTarget = "match"
+regexes = [
+  '''RUNWAYML_API_SECRET=ci''',
+  '''RUNWAYML_API_SECRET=<runway_api_key>''',
+  '''OWNER_EMAIL=owner@example.com''',
+  '''SUPABASE_SECRET_KEY=ci''',
+  '''NEXT_PUBLIC_SUPABASE_PUBLIC_KEY=ci''',
+]
