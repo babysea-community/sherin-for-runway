@@ -169,7 +169,7 @@ export default async function StudioPage({ searchParams }: PageProps) {
                 Input
               </p>
               <h1 className="mt-2 text-2xl font-semibold text-white">
-                Image model
+                Media model
               </h1>
             </div>
           </div>
