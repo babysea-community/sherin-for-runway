@@ -29,7 +29,7 @@ import { cancelActiveGeneration, generateImage } from './_lib/server-actions';
 
 export const metadata: Metadata = {
   title: 'Studio',
-  description: 'Generate images through your own keys and storage.',
+  description: 'Generate media through your own keys and storage.',
   robots: { index: false, follow: false },
 };
 

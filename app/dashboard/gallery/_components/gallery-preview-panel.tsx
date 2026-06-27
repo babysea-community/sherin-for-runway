@@ -66,8 +66,8 @@ export function GalleryPreviewPanel({
             controls
             muted
             playsInline
-            preload={priority ? 'metadata' : 'none'}
-            onLoadedData={() => {
+            preload="metadata"
+            onLoadedMetadata={() => {
               setLoadedPreviewUrl(previewUrl);
               setUnavailablePreviewUrl((currentPreviewUrl) =>
                 currentPreviewUrl === previewUrl ? null : currentPreviewUrl,

@@ -100,7 +100,7 @@ export function StudioResultPanel({
               muted
               playsInline
               preload="metadata"
-              onLoadedData={() => {
+              onLoadedMetadata={() => {
                 setLoadedPreviewUrl(previewUrl);
                 setUnavailablePreviewUrl((currentPreviewUrl) =>
                   currentPreviewUrl === previewUrl ? null : currentPreviewUrl,

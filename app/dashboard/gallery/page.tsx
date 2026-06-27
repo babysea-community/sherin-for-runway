@@ -44,7 +44,7 @@ import { GalleryPreviewPanel } from './_components/gallery-preview-panel';
 
 export const metadata: Metadata = {
   title: 'Gallery',
-  description: 'Every image you have generated through Sherin.',
+  description: 'Every media asset you have generated through Sherin.',
   robots: { index: false, follow: false },
 };
 
@@ -620,7 +620,7 @@ function imageInfoForGeneration(
     return (
       <>
         Your <CodeValue>{storageProvider}</CodeValue> is set up correctly and
-        the generated image is ready to view. Good job!
+        the generated media is ready to view. Good job!
       </>
     );
   }
@@ -637,13 +637,13 @@ function imageInfoForGeneration(
   if (status === 'unavailable' || status === 'succeeded') {
     return (
       <>
-        Your image file is not available. Check your{' '}
+        Your media file is not available. Check your{' '}
         <CodeValue>{storageProvider}</CodeValue> content.
       </>
     );
   }
 
-  return 'Image output is not available yet.';
+  return 'Media output is not available yet.';
 }
 
 function CodeValue({ children }: { children: string }) {
