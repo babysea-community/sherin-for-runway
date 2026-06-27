@@ -27,12 +27,14 @@ export function StudioResultPanel({
   error,
   generation,
   generating,
+  previewContentType,
   previewUrl,
   stage,
 }: {
   error?: StudioResultError | null;
   generation: StudioResultGeneration | null;
   generating: boolean;
+  previewContentType?: string | null;
   previewUrl: string | null;
   stage?: string | null;
 }) {
@@ -41,17 +43,18 @@ export function StudioResultPanel({
     string | null
   >(null);
   const [dismissedErrorId, setDismissedErrorId] = useState<string | null>(null);
+  const previewIsVideo = previewContentType?.startsWith('video/') ?? false;
 
   useEffect(() => {
     setDismissedErrorId(null);
   }, [error?.id, error?.message]);
 
-  const imageLoaded = Boolean(previewUrl && loadedPreviewUrl === previewUrl);
-  const imageUnavailable = Boolean(
+  const previewLoaded = Boolean(previewUrl && loadedPreviewUrl === previewUrl);
+  const previewUnavailable = Boolean(
     previewUrl && unavailablePreviewUrl === previewUrl,
   );
-  const showPreview = Boolean(previewUrl && !imageUnavailable);
-  const showLoadingPreview = showPreview && !imageLoaded;
+  const showPreview = Boolean(previewUrl && !previewUnavailable);
+  const showLoadingPreview = showPreview && !previewLoaded;
   const showGeneratingPreview = generating && !showPreview;
   const showError = Boolean(
     error &&
@@ -59,7 +62,7 @@ export function StudioResultPanel({
     !showGeneratingPreview &&
     dismissedErrorId !== error.id,
   );
-  const showDetails = Boolean(generation && imageLoaded);
+  const showDetails = Boolean(generation && previewLoaded);
   const handlePreviewImageRef = useCallback(
     (image: HTMLImageElement | null) => {
       if (!image || !previewUrl || !image.complete) {
@@ -82,7 +85,34 @@ export function StudioResultPanel({
   return (
     <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">
       <div className="relative flex aspect-square w-full flex-none overflow-hidden rounded-xl border border-white/10 bg-slate-950">
-        {showPreview && previewUrl ? (
+        {showPreview && previewUrl && previewIsVideo ? (
+          <div
+            aria-busy={showLoadingPreview}
+            className="relative block size-full"
+          >
+            {showLoadingPreview ? <ImageLoadingSkeleton /> : null}
+            <video
+              src={previewUrl}
+              className={`absolute inset-0 size-full object-cover transition duration-500 ${
+                previewLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              onLoadedData={() => {
+                setLoadedPreviewUrl(previewUrl);
+                setUnavailablePreviewUrl((currentPreviewUrl) =>
+                  currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
+                );
+              }}
+              onError={() => {
+                setLoadedPreviewUrl(null);
+                setUnavailablePreviewUrl(previewUrl);
+              }}
+            />
+          </div>
+        ) : showPreview && previewUrl ? (
           <a
             href={previewUrl}
             target="_blank"
@@ -101,7 +131,7 @@ export function StudioResultPanel({
                   : 'Generated image'
               }
               className={`absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02] ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
+                previewLoaded ? 'opacity-100' : 'opacity-0'
               }`}
               decoding="async"
               fetchPriority="high"

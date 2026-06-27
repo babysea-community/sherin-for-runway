@@ -4,6 +4,16 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Changed
+
+- Standardize Runway BYOK form rendering around Semantic Lady schema fields.
+- Separate image and video input handling for Runway models while keeping shared UI media/file wording generic.
+- Render Runway duration as a bounded select control and use local field descriptions for Studio form help text.
+
+### Fixed
+
+- Ignore stale form values that are outside the active Runway model schema.
+
 ## [0.1.0] - 2026-06-27 - INITIAL RELEASED
 
 - Implement Runway models.

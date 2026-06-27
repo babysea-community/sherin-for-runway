@@ -6,12 +6,14 @@ import { ImageLoadingSkeleton } from '../../_components/image-loading-skeleton';
 
 export function GalleryPreviewPanel({
   previewUrl,
+  previewContentType,
   priority = false,
   prompt,
   ratio,
   status,
 }: {
   previewUrl: string | null;
+  previewContentType?: string | null;
   priority?: boolean;
   prompt: string;
   ratio: string;
@@ -21,13 +23,14 @@ export function GalleryPreviewPanel({
   const [unavailablePreviewUrl, setUnavailablePreviewUrl] = useState<
     string | null
   >(null);
+  const previewIsVideo = previewContentType?.startsWith('video/') ?? false;
 
-  const imageLoaded = Boolean(previewUrl && loadedPreviewUrl === previewUrl);
-  const imageUnavailable = Boolean(
+  const previewLoaded = Boolean(previewUrl && loadedPreviewUrl === previewUrl);
+  const previewUnavailable = Boolean(
     previewUrl && unavailablePreviewUrl === previewUrl,
   );
-  const showPreview = Boolean(previewUrl && !imageUnavailable);
-  const showLoadingPreview = showPreview && !imageLoaded;
+  const showPreview = Boolean(previewUrl && !previewUnavailable);
+  const showLoadingPreview = showPreview && !previewLoaded;
   const handlePreviewImageRef = useCallback(
     (image: HTMLImageElement | null) => {
       if (!image || !previewUrl || !image.complete) {
@@ -48,6 +51,38 @@ export function GalleryPreviewPanel({
   );
 
   if (showPreview && previewUrl) {
+    if (previewIsVideo) {
+      return (
+        <div
+          aria-busy={showLoadingPreview}
+          className="relative mt-4 block aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-slate-950"
+        >
+          {showLoadingPreview ? <ImageLoadingSkeleton /> : null}
+          <video
+            src={previewUrl}
+            className={`absolute inset-0 size-full object-cover transition duration-500 ${
+              previewLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            controls
+            muted
+            playsInline
+            preload={priority ? 'metadata' : 'none'}
+            onLoadedData={() => {
+              setLoadedPreviewUrl(previewUrl);
+              setUnavailablePreviewUrl((currentPreviewUrl) =>
+                currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
+              );
+            }}
+            onError={() => {
+              setLoadedPreviewUrl(null);
+              setUnavailablePreviewUrl(previewUrl);
+            }}
+          />
+          <RatioOverlay ratio={ratio} />
+        </div>
+      );
+    }
+
     return (
       <a
         href={previewUrl}
@@ -63,7 +98,7 @@ export function GalleryPreviewPanel({
           src={previewUrl}
           alt={`Generated image for: ${prompt}`}
           className={`absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02] ${
-            imageLoaded ? 'opacity-100' : 'opacity-0'
+            previewLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
@@ -87,7 +122,7 @@ export function GalleryPreviewPanel({
 
   const failed = status === 'failed';
   const missing =
-    Boolean(previewUrl && imageUnavailable) ||
+    Boolean(previewUrl && previewUnavailable) ||
     status === 'succeeded' ||
     status === 'unavailable';
   const fallbackIcon = failed ? (

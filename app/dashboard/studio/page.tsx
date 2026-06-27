@@ -138,6 +138,12 @@ export default async function StudioPage({ searchParams }: PageProps) {
   const latestPreviewUrl =
     latestAssetUrl ??
     (showSampleResult ? SHERIN_SAMPLE_RESULT.previewUrl : null);
+  const latestPreviewContentType = latestGeneration
+    ? (getGenerationMetadataString(
+        latestGeneration.metadata,
+        'sherin_asset_content_type',
+      ) ?? previewContentTypeForOutputFormat(latestRequest?.outputFormat))
+    : null;
   const showGeneratingPreview = latestGenerationActive && !latestPreviewUrl;
   const studioToasts = createStudioToasts({
     activeProvider,
@@ -250,6 +256,7 @@ export default async function StudioPage({ searchParams }: PageProps) {
                   : null
             }
             generating={showGeneratingPreview}
+            previewContentType={latestPreviewContentType}
             previewUrl={latestPreviewUrl}
             stage={latestActiveStage}
           />
@@ -261,6 +268,10 @@ export default async function StudioPage({ searchParams }: PageProps) {
 
 function isActiveGenerationStatus(status: string) {
   return status === 'queued' || status === 'running';
+}
+
+function previewContentTypeForOutputFormat(outputFormat: string | undefined) {
+  return outputFormat === 'mp4' ? 'video/mp4' : null;
 }
 
 function readStudioFormDefaults(metadata: unknown): {

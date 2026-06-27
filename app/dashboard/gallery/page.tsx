@@ -72,6 +72,9 @@ export default async function GalleryPage() {
   const rows = (generations ?? []).map((generation) => {
     const request = getGenerationRequestSnapshot(generation.metadata);
     const previewUrl = previewUrlForGeneration(generation);
+    const previewContentType =
+      previewContentTypeForGeneration(generation) ??
+      previewContentTypeForOutputFormat(request.outputFormat);
     const previewSource: 'storage' | null = previewUrl ? 'storage' : null;
     const storageProvider = storageProviderForGeneration(generation);
     const fallbackStorageProvider =
@@ -91,6 +94,7 @@ export default async function GalleryPage() {
         fallbackStorageProvider,
       ),
       fallbackStorageProvider,
+      previewContentType,
       previewUrl,
       storageProvider,
       previewSource,
@@ -151,6 +155,7 @@ export default async function GalleryPage() {
               <GalleryPreviewPanel
                 priority={index < 4}
                 prompt={generation.prompt}
+                previewContentType={generation.previewContentType}
                 previewUrl={generation.previewUrl}
                 ratio={generation.ratio}
                 status={generation.status}
@@ -175,6 +180,7 @@ function createSampleGalleryRow() {
     id: SHERIN_SAMPLE_RESULT.id,
     imageInfo:
       'Sample image only. Your first real generation will replace this card.',
+    previewContentType: null,
     previewUrl: SHERIN_SAMPLE_RESULT.previewUrl,
     prompt: SHERIN_SAMPLE_RESULT.prompt,
     ratio: SHERIN_SAMPLE_RESULT.ratio,
@@ -566,6 +572,19 @@ function previewUrlForGeneration(generation: {
   }
 
   return `/dashboard/gallery/preview/${generation.id}`;
+}
+
+function previewContentTypeForGeneration(generation: {
+  metadata: Parameters<typeof getGenerationMetadataString>[0];
+}) {
+  return getGenerationMetadataString(
+    generation.metadata,
+    'sherin_asset_content_type',
+  );
+}
+
+function previewContentTypeForOutputFormat(outputFormat: string | undefined) {
+  return outputFormat === 'mp4' ? 'video/mp4' : null;
 }
 
 function fallbackStorageProviderForGeneration(generation: {
