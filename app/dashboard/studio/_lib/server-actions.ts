@@ -14,7 +14,7 @@ import {
   getBabySeaInputFileLimit,
   type SherinModelId,
 } from '@/lib/app-config';
-import type { Database } from '@/lib/database.types';
+import type { Database, Json } from '@/lib/database.types';
 import {
   resolveInferenceProvider,
   type InferenceProvider,
@@ -32,7 +32,10 @@ import {
   type GenerationInput,
   mergeGenerationMetadata,
   parseBabySeaSpecificParams,
+  readQueuedGenerationInputFileAssets,
   readQueuedGenerationInputFileUploadPaths,
+  readQueuedGenerationJob,
+  retainedStorageBytesAfterInputCleanup,
 } from './generation-job';
 import { processGenerationQueue } from './generation-worker';
 import {
@@ -40,7 +43,9 @@ import {
   type StoredInputFileAsset,
   cleanupInputFileUploads,
   persistUploadedInputFile,
+  persistUploadedInputVideoFile,
   persistUrlInputFile,
+  persistUrlInputVideoFile,
 } from './input-file-uploads';
 import { canResumeProviderWorkload } from './provider-resume';
 
@@ -52,6 +57,8 @@ const STALE_QUEUED_GENERATION_MS = 5 * 60 * 1000;
 const STALE_RUNNING_GENERATION_MS = 20 * 60 * 1000;
 const INPUT_FILE_SOURCE_FIELD = 'generation_input_file_source';
 const INPUT_FILE_UPLOAD_FIELD = 'generation_input_file_upload';
+const INPUT_VIDEO_FILE_SOURCE_FIELD = 'generation_input_video_file_source';
+const INPUT_VIDEO_FILE_UPLOAD_FIELD = 'generation_input_video_file_upload';
 
 export async function generateImage(formData: FormData) {
   const { user } = await getUser();
@@ -66,6 +73,8 @@ export async function generateImage(formData: FormData) {
 
   const inputFileSource = readInputFileSource(formData);
   const inputFileUploads = readInputFileUploads(formData);
+  const inputVideoFileSource = readInputVideoFileSource(formData);
+  const inputVideoFileUploads = readInputVideoFileUploads(formData);
 
   let provider;
   try {
@@ -111,6 +120,7 @@ export async function generateImage(formData: FormData) {
   const generationId = randomUUID();
   let babyseaSpecificParams: Record<string, string | number | boolean> = {};
   let inputFileAssets: StoredInputFileAsset[] = [];
+  let inputVideoFileAssets: StoredInputFileAsset[] = [];
 
   if (provider.id === 'babysea') {
     const schema = await loadBabySeaSchemaOrRedirect(parsed.data.model);
@@ -210,24 +220,66 @@ export async function generateImage(formData: FormData) {
         ),
       },
     });
+    const byokPreflightRequest = {
+      ...preflightRequest,
+      byokParams: {
+        ...preflightRequest.byokParams,
+        generation_input_video_file: inputFilesForPreflight(
+          inputVideoFileSource,
+          readInputVideoFileUrls(formData),
+          inputVideoFileUploads,
+        ),
+      },
+    };
     const prepared = await prepareByokRequestOrRedirect(
       provider,
       formData,
-      preflightRequest,
+      byokPreflightRequest,
     );
-    const resolvedInputFiles = await resolveGenerationInputFilesOrRedirect({
-      admin,
-      generationId,
-      maxFiles: prepared.inputFileLimit,
-      source: inputFileSource,
-      uploadFiles: inputFileUploads,
-      urls: parsed.data.generation_input_file,
-      userId: user.id,
-    });
-    inputFileAssets = resolvedInputFiles.assets;
+    let resolvedInputFiles: Awaited<
+      ReturnType<typeof resolveGenerationInputFilesOrRedirect>
+    >;
+    let resolvedInputVideoFiles: Awaited<
+      ReturnType<typeof resolveGenerationInputVideoFilesOrRedirect>
+    >;
+
+    try {
+      resolvedInputFiles = await resolveGenerationInputFilesOrRedirect({
+        admin,
+        generationId,
+        maxFiles: prepared.inputImageLimit,
+        source: inputFileSource,
+        uploadFiles: inputFileUploads,
+        urls: parsed.data.generation_input_file,
+        userId: user.id,
+      });
+      inputFileAssets = resolvedInputFiles.assets;
+      resolvedInputVideoFiles =
+        await resolveGenerationInputVideoFilesOrRedirect({
+          admin,
+          generationId,
+          maxFiles: prepared.inputVideoLimit ?? 0,
+          source: inputVideoFileSource,
+          uploadFiles: inputVideoFileUploads,
+          urls: readInputVideoFileUrls(formData),
+          userId: user.id,
+        });
+      inputVideoFileAssets = resolvedInputVideoFiles.assets;
+    } catch (error) {
+      await cleanupStoredInputFileAssets([
+        ...inputFileAssets,
+        ...inputVideoFileAssets,
+      ]);
+
+      throw error;
+    }
 
     generationInput = fromInferenceRequest({
       ...prepared.request,
+      byokParams: {
+        ...prepared.request.byokParams,
+        generation_input_video_file: resolvedInputVideoFiles.urls,
+      },
       inputFiles: resolvedInputFiles.urls,
     });
   }
@@ -235,22 +287,24 @@ export async function generateImage(formData: FormData) {
   const storageStatus = getStorageProviderStatus();
   const initialStorageProvider =
     storageStatus.active ?? storageStatus.preferred ?? 'supabase-storage';
+  const allInputFileAssets = [...inputFileAssets, ...inputVideoFileAssets];
   const generationJob = createQueuedGenerationJob(
     generationInput,
     babyseaSpecificParams,
     initialStorageProvider,
-    inputFileAssets,
+    allInputFileAssets,
+    supabaseInputFileUploadPaths(allInputFileAssets),
   );
-  const inputFileBytes = inputFileAssets.reduce(
+  const inputFileBytes = allInputFileAssets.reduce(
     (total, asset) => total + asset.byteLength,
     0,
   );
   const generationMetadata = mergeGenerationMetadata({
     sherin_job: generationJob,
-    ...(inputFileAssets.length > 0
+    ...(allInputFileAssets.length > 0
       ? {
-          sherin_input_file_count: inputFileAssets.length,
-          sherin_input_file_storage_paths: inputFileAssets.map(
+          sherin_input_file_count: allInputFileAssets.length,
+          sherin_input_file_storage_paths: allInputFileAssets.map(
             (asset) => asset.storagePath,
           ),
         }
@@ -282,7 +336,7 @@ export async function generateImage(formData: FormData) {
     .single();
 
   if (insertError) {
-    await cleanupStoredInputFileAssets(inputFileAssets);
+    await cleanupStoredInputFileAssets(allInputFileAssets);
 
     if (isActiveGenerationConflict(insertError)) {
       const conflictingGeneration = await getActiveGeneration(admin, user.id);
@@ -308,7 +362,7 @@ export async function generateImage(formData: FormData) {
   }
 
   if (!generation) {
-    await cleanupStoredInputFileAssets(inputFileAssets);
+    await cleanupStoredInputFileAssets(allInputFileAssets);
 
     throw insertError ?? new Error('Could not create generation row.');
   }
@@ -342,6 +396,9 @@ export async function cancelActiveGeneration() {
   const canceledAt = new Date().toISOString();
   const message =
     'Canceled in Sherin by owner. Provider-side jobs already running may still complete.';
+  const inputFileBytes = inputFileAssetsByteLengthFromMetadata(
+    activeGeneration.metadata,
+  );
   const metadata = mergeGenerationMetadata(activeGeneration.metadata, {
     sherin_error: message,
     sherin_failed_at: canceledAt,
@@ -349,26 +406,42 @@ export async function cancelActiveGeneration() {
     sherin_stage: 'failed',
   });
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from('generations')
     .update({
       error: message,
       metadata,
+      storage_bytes: inputFileBytes,
       status: 'failed',
     })
     .eq('id', activeGeneration.id)
     .eq('user_id', user.id)
-    .in('status', ['queued', 'running']);
+    .in('status', ['queued', 'running'])
+    .select('id');
 
   if (error) {
     throw error;
   }
 
-  await cleanupInputFileUploads(
-    admin,
-    user.id,
-    readQueuedGenerationInputFileUploadPaths(activeGeneration.metadata),
-  );
+  if ((data?.length ?? 0) === 0) {
+    revalidateStudioPaths();
+    redirect(`/dashboard/studio?created=${activeGeneration.id}`);
+  }
+
+  if (
+    await cleanupQueuedGenerationInputFiles(
+      admin,
+      user.id,
+      activeGeneration.metadata,
+    )
+  ) {
+    await updateGenerationAfterInputCleanup(
+      admin,
+      activeGeneration.id,
+      retainedStorageBytesAfterInputCleanup(),
+      metadata,
+    );
+  }
 
   revalidateStudioPaths();
   redirect('/dashboard/studio?error=generation_cancelled');
@@ -469,6 +542,9 @@ async function failStaleGeneration(
 ) {
   const failedAt = new Date().toISOString();
   const message = generation.error ?? 'Generation timed out before completion.';
+  const inputFileBytes = inputFileAssetsByteLengthFromMetadata(
+    generation.metadata,
+  );
   const metadata = mergeGenerationMetadata(generation.metadata, {
     sherin_error: message,
     sherin_failed_at: failedAt,
@@ -481,6 +557,7 @@ async function failStaleGeneration(
     .update({
       error: message,
       metadata,
+      storage_bytes: inputFileBytes,
       status: 'failed',
     })
     .eq('id', generation.id)
@@ -502,11 +579,20 @@ async function failStaleGeneration(
   }
 
   if ((data?.length ?? 0) > 0) {
-    await cleanupInputFileUploads(
-      admin,
-      userId,
-      readQueuedGenerationInputFileUploadPaths(generation.metadata),
-    );
+    if (
+      await cleanupQueuedGenerationInputFiles(
+        admin,
+        userId,
+        generation.metadata,
+      )
+    ) {
+      await updateGenerationAfterInputCleanup(
+        admin,
+        generation.id,
+        retainedStorageBytesAfterInputCleanup(),
+        metadata,
+      );
+    }
   }
 }
 
@@ -570,6 +656,12 @@ function readInputFileSource(formData: FormData): InputFileSource {
   return formData.get(INPUT_FILE_SOURCE_FIELD) === 'upload' ? 'upload' : 'url';
 }
 
+function readInputVideoFileSource(formData: FormData): InputFileSource {
+  return formData.get(INPUT_VIDEO_FILE_SOURCE_FIELD) === 'upload'
+    ? 'upload'
+    : 'url';
+}
+
 function readInputFileUploads(formData: FormData) {
   return formData
     .getAll(INPUT_FILE_UPLOAD_FIELD)
@@ -580,6 +672,31 @@ function readInputFileUploads(formData: FormData) {
 
       return value.name !== '' || value.size > 0;
     });
+}
+
+function readInputVideoFileUploads(formData: FormData) {
+  return formData
+    .getAll(INPUT_VIDEO_FILE_UPLOAD_FIELD)
+    .filter((value): value is File => {
+      if (!isUploadedFile(value)) {
+        return false;
+      }
+
+      return value.name !== '' || value.size > 0;
+    });
+}
+
+function readInputVideoFileUrls(formData: FormData) {
+  const value = formData.get('generation_input_video_file');
+
+  if (typeof value !== 'string') {
+    return [];
+  }
+
+  return value
+    .split(/[\n,]/)
+    .map((url) => url.trim())
+    .filter(Boolean);
 }
 
 function isUploadedFile(value: FormDataEntryValue): value is File {
@@ -605,7 +722,7 @@ async function prepareByokRequestOrRedirect(
   try {
     return provider.prepareRequest
       ? await provider.prepareRequest({ formData, request })
-      : { inputFileLimit: request.inputFiles.length, request };
+      : { inputImageLimit: request.inputFiles.length, request };
   } catch (error) {
     console.error('Could not prepare BYOK generation input', error);
     redirect('/dashboard/studio?error=invalid_input');
@@ -761,9 +878,111 @@ async function resolveGenerationInputFiles(input: {
   };
 }
 
+async function resolveGenerationInputVideoFilesOrRedirect(input: {
+  admin: SupabaseAdminClient;
+  generationId: string;
+  maxFiles: number;
+  source: InputFileSource;
+  uploadFiles: File[];
+  urls: string[];
+  userId: string;
+}) {
+  try {
+    return await resolveGenerationInputVideoFiles(input);
+  } catch (error) {
+    if (error instanceof InvalidInputFileUploadError) {
+      redirect(`/dashboard/studio?error=${error.feedback}`);
+    }
+
+    console.error('Could not upload input videos to Supabase Storage', error);
+    redirect('/dashboard/studio?error=input_upload_failed');
+  }
+}
+
+async function resolveGenerationInputVideoFiles(input: {
+  admin: SupabaseAdminClient;
+  generationId: string;
+  maxFiles: number;
+  source: InputFileSource;
+  uploadFiles: File[];
+  urls: string[];
+  userId: string;
+}) {
+  if (input.source === 'url') {
+    if (input.urls.length > input.maxFiles) {
+      throw new InvalidInputFileUploadError(
+        'Too many input video URLs.',
+        'invalid_input',
+      );
+    }
+
+    const assets: StoredInputFileAsset[] = [];
+
+    try {
+      let reservedBytes = 0;
+
+      for (const [index, url] of input.urls.entries()) {
+        const asset = await persistUrlInputVideoFile({
+          generationId: input.generationId,
+          index,
+          reservedBytes,
+          url,
+          userId: input.userId,
+        });
+
+        assets.push(asset);
+        reservedBytes += asset.byteLength;
+      }
+    } catch (error) {
+      await cleanupStoredInputFileAssets(assets);
+
+      throw error;
+    }
+
+    return { assets, storagePaths: [], urls: assets.map((asset) => asset.url) };
+  }
+
+  if (input.uploadFiles.length === 0) {
+    return { assets: [], storagePaths: [], urls: [] };
+  }
+
+  if (input.uploadFiles.length > input.maxFiles) {
+    throw new InvalidInputFileUploadError('Too many uploaded input videos.');
+  }
+
+  const assets: StoredInputFileAsset[] = [];
+
+  try {
+    let reservedBytes = 0;
+
+    for (const [index, file] of input.uploadFiles.entries()) {
+      const asset = await persistUploadedInputVideoFile({
+        file,
+        generationId: input.generationId,
+        index,
+        reservedBytes,
+        userId: input.userId,
+      });
+
+      assets.push(asset);
+      reservedBytes += asset.byteLength;
+    }
+  } catch (error) {
+    await cleanupStoredInputFileAssets(assets);
+
+    throw error;
+  }
+
+  return {
+    assets,
+    storagePaths: [],
+    urls: assets.map((asset) => asset.url),
+  };
+}
+
 async function cleanupStoredInputFileAssets(assets: StoredInputFileAsset[]) {
   if (assets.length === 0) {
-    return;
+    return true;
   }
 
   try {
@@ -773,9 +992,81 @@ async function cleanupStoredInputFileAssets(assets: StoredInputFileAsset[]) {
         storageProvider: asset.storageProvider,
       })),
     );
+
+    return true;
   } catch (error) {
     console.warn('Could not remove stored input images after failure', error);
+
+    return false;
   }
+}
+
+async function cleanupQueuedGenerationInputFiles(
+  admin: SupabaseAdminClient,
+  userId: string,
+  metadata: Json | null,
+) {
+  const storedAssetsCleaned = await cleanupStoredInputFileAssets(
+    readQueuedGenerationInputFileAssets(metadata),
+  );
+  const legacyPathsCleaned = await cleanupInputFileUploads(
+    admin,
+    userId,
+    readQueuedGenerationInputFileUploadPaths(metadata),
+  );
+
+  return storedAssetsCleaned && legacyPathsCleaned;
+}
+
+async function updateGenerationAfterInputCleanup(
+  admin: SupabaseAdminClient,
+  generationId: string,
+  storageBytes: number,
+  metadata: Json,
+) {
+  const cleanedMetadata = removeQueuedInputFileAssetsFromMetadata(metadata);
+  const { error } = await admin
+    .from('generations')
+    .update({ metadata: cleanedMetadata, storage_bytes: storageBytes })
+    .eq('id', generationId);
+
+  if (error) {
+    console.warn('Could not update generation after input cleanup', error);
+  }
+}
+
+function removeQueuedInputFileAssetsFromMetadata(metadata: Json | null) {
+  try {
+    const job = readQueuedGenerationJob(metadata);
+
+    return mergeGenerationMetadata(metadata, {
+      sherin_input_file_count: 0,
+      sherin_input_file_storage_paths: [],
+      sherin_input_files_cleaned_at: new Date().toISOString(),
+      sherin_job: {
+        ...job,
+        inputFileAssets: [],
+        inputFileUploadPaths: [],
+      },
+    });
+  } catch {
+    return mergeGenerationMetadata(metadata, {
+      sherin_input_files_cleaned_at: new Date().toISOString(),
+    });
+  }
+}
+
+function inputFileAssetsByteLengthFromMetadata(metadata: Json | null) {
+  return readQueuedGenerationInputFileAssets(metadata).reduce(
+    (total, asset) => total + asset.byteLength,
+    0,
+  );
+}
+
+function supabaseInputFileUploadPaths(assets: StoredInputFileAsset[]) {
+  return assets
+    .filter((asset) => asset.storageProvider === 'supabase-storage')
+    .map((asset) => asset.storagePath);
 }
 
 function isHttpsUrl(value: string) {

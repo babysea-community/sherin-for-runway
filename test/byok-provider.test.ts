@@ -116,6 +116,50 @@ describe('Runway provider', () => {
     expect(submitBody).not.toHaveProperty('ratio');
   });
 
+  it('submits image tasks with Semantic Lady Runway params', async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockReadyRunwayFetch(
+      'runway_task_image',
+      'https://assets.example.com/output.png',
+    );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const generationPromise = createRunwayProvider().generate(
+      createRequest({
+        byokParams: {
+          generation_moderation: true,
+          generation_reference_tag: 'hero',
+          generation_seed: 321,
+        },
+        inputFiles: ['https://assets.example.com/reference.png'],
+        model: 'runway/gen-4-image',
+        outputFormat: 'png',
+        ratio: '1024:1024',
+      }),
+    );
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    await generationPromise;
+    const [submitUrl, submitInit] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    const submitBody = JSON.parse(String(submitInit.body)) as Record<
+      string,
+      unknown
+    >;
+
+    expect(submitUrl).toBe('https://api.dev.runwayml.com/v1/text_to_image');
+    expect(submitBody).toMatchObject({
+      contentModeration: { publicFigureThreshold: 'auto' },
+      model: 'gen4_image',
+      referenceImages: [{ uri: 'https://assets.example.com/reference.png' }],
+      referenceTags: ['hero'],
+      seed: 321,
+    });
+  });
+
   it('submits character tasks without promptText for Act Two', async () => {
     vi.useFakeTimers();
     const fetchMock = mockReadyRunwayFetch(
@@ -128,6 +172,8 @@ describe('Runway provider', () => {
     const generationPromise = createRunwayProvider().generate(
       createRequest({
         byokParams: {
+          generation_body_control: true,
+          generation_expression_intensity: 4,
           generation_input_video_file: [
             'https://assets.example.com/reference.mp4',
           ],
@@ -155,10 +201,12 @@ describe('Runway provider', () => {
       'https://api.dev.runwayml.com/v1/character_performance',
     );
     expect(submitBody).toMatchObject({
+      bodyControl: true,
       character: {
         type: 'image',
         uri: 'https://assets.example.com/character.png',
       },
+      expressionIntensity: 4,
       model: 'act_two',
       reference: {
         type: 'video',
@@ -188,6 +236,32 @@ describe('Runway provider', () => {
     });
   });
 
+  it('prepares Semantic Lady params from form data', async () => {
+    const formData = new FormData();
+
+    formData.set('generation_moderation', 'true');
+    formData.set('generation_reference_tag', 'hero');
+    formData.set('generation_seed', '321');
+
+    await expect(
+      prepareRequest(
+        createRunwayProvider(),
+        formData,
+        createRequest({ model: 'runway/gen-4-image' }),
+      ),
+    ).resolves.toMatchObject({
+      inputImageLimit: 3,
+      request: {
+        byokParams: {
+          generation_moderation: true,
+          generation_reference_tag: 'hero',
+          generation_seed: 321,
+        },
+      },
+      inputVideoLimit: 0,
+    });
+  });
+
   it('prepares video-to-video input params from form data', async () => {
     const formData = new FormData();
 
@@ -209,6 +283,61 @@ describe('Runway provider', () => {
         },
       },
     });
+  });
+
+  it('prepares uploaded video placeholders from request params', async () => {
+    const formData = new FormData();
+
+    formData.set('generation_input_video_file_source', 'upload');
+    formData.set(
+      'generation_input_video_file',
+      'https://assets.example.com/stale.mp4',
+    );
+
+    await expect(
+      prepareRequest(
+        createRunwayProvider(),
+        formData,
+        createRequest({
+          byokParams: {
+            generation_input_video_file: ['https://example.com/input-0'],
+          },
+          model: 'runway/aleph-2',
+          outputFormat: 'mp4',
+        }),
+      ),
+    ).resolves.toMatchObject({
+      inputImageLimit: 1,
+      request: {
+        byokParams: {
+          generation_input_video_file: ['https://example.com/input-0'],
+        },
+      },
+      inputVideoLimit: 1,
+    });
+  });
+
+  it('omits optional empty boolean params from form data', async () => {
+    const formData = new FormData();
+
+    formData.set('generation_body_control', '');
+
+    const prepared = await prepareRequest(
+      createRunwayProvider(),
+      formData,
+      createRequest({
+        byokParams: {
+          generation_input_video_file: ['https://example.com/input-0'],
+        },
+        model: 'runway/act-two',
+        outputFormat: 'mp4',
+        ratio: '1280:720',
+      }),
+    );
+
+    expect(prepared.request.byokParams).not.toHaveProperty(
+      'generation_body_control',
+    );
   });
 
   it('resumes polling without resubmitting direct provider work', async () => {

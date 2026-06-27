@@ -14,7 +14,7 @@ import { ClientGallery } from '@/components/gallery/client';
 import { ProtectedImage } from '@/components/protected-image';
 
 const repositoryUrl = 'https://github.com/babysea-community/sherin-for-runway';
-const templatesUrl = 'https://babysea.ai/templates/sherin';
+const templatesUrl = 'https://babysea.ai/templates/sherin-for-runway';
 
 const communityLinks = [
   {
@@ -210,12 +210,12 @@ export default function HomePage() {
         className={`${pageContainerClass} flex flex-col gap-3 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between`}
       >
         <a
-          href="https://www.netlify.com/"
+          href="https://babysea.ai/about"
           target="_blank"
           rel="noreferrer noopener"
           className="font-medium text-[#05BDBA] underline decoration-[#05BDBA66] underline-offset-4 transition hover:text-white hover:decoration-white"
         >
-          This site is powered by Netlify
+          Built for the AI community
         </a>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <a

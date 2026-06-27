@@ -22,8 +22,11 @@ const POLL_TIMEOUT_MS =
 const REQUEST_TIMEOUT_MS = 30_000;
 
 type RunwayRequestParams = {
+  bodyControl?: boolean;
   duration?: number;
+  expressionIntensity?: number;
   moderation?: boolean;
+  referenceTag?: string;
   seed?: number;
   videoInputFiles: string[];
 };
@@ -56,7 +59,10 @@ export function createRunwayProvider(): InferenceProvider {
     },
     prepareRequest({ formData, request }) {
       const modelConfig = resolveRunwayModelConfig(request.model);
-      const params = readRunwayParamsFromFormData(formData, modelConfig);
+      const params = mergeRunwayPreflightParams(
+        readRunwayParamsFromFormData(formData, modelConfig),
+        request.byokParams,
+      );
       const preparedRequest = {
         ...request,
         byokParams: params,
@@ -79,7 +85,8 @@ export function createRunwayProvider(): InferenceProvider {
       );
 
       return {
-        inputFileLimit: modelConfig.inputFileLimit,
+        inputImageLimit: modelConfig.inputImageLimit,
+        inputVideoLimit: modelConfig.inputVideoLimit,
         request: preparedRequest,
       };
     },
@@ -196,14 +203,66 @@ function readRunwayParamsFromFormData(
     params.generation_moderation = moderation;
   }
 
-  assignNumberParam(params, 'generation_seed', formData.get('byok_seed'));
-
-  const videoInputFiles = parseInputUrls(
-    formData.get('generation_input_video_file'),
+  const bodyControl = readOptionalBoolean(
+    formData.get('generation_body_control'),
   );
+  if (bodyControl !== undefined) {
+    params.generation_body_control = bodyControl;
+  }
+
+  assignNumberParam(
+    params,
+    'generation_expression_intensity',
+    formData.get('generation_expression_intensity'),
+  );
+
+  const referenceTag = readOptionalString(
+    formData.get('generation_reference_tag'),
+  );
+  if (referenceTag !== undefined) {
+    params.generation_reference_tag = referenceTag;
+  }
+
+  assignNumberParam(
+    params,
+    'generation_seed',
+    firstFormValue(formData, ['generation_seed', 'byok_seed']),
+  );
+
+  const videoInputFiles =
+    formData.get('generation_input_video_file_source') === 'upload'
+      ? []
+      : parseInputUrls(formData.get('generation_input_video_file'));
   if (videoInputFiles.length > 0) {
     params.generation_input_video_file = videoInputFiles;
   }
+
+  return params;
+}
+
+function mergeRunwayPreflightParams(
+  formParams: InferenceRequest['byokParams'],
+  requestParams: InferenceRequest['byokParams'],
+) {
+  const formVideoInputFiles = collectStringValues(
+    formParams.generation_input_video_file,
+  );
+  const requestVideoInputFiles = collectStringValues(
+    requestParams.generation_input_video_file,
+  );
+
+  if (requestVideoInputFiles.length > 0) {
+    return {
+      ...formParams,
+      generation_input_video_file: requestVideoInputFiles,
+    };
+  }
+
+  if (formVideoInputFiles.length > 0) {
+    return formParams;
+  }
+
+  const { generation_input_video_file, ...params } = formParams;
 
   return params;
 }
@@ -213,10 +272,15 @@ function resolveRunwayParams(
   config: RunwayModelConfig,
 ): RunwayRequestParams {
   return {
+    bodyControl: readOptionalBoolean(params.generation_body_control),
     duration:
       readOptionalNumber(params.generation_duration) ??
       (config.duration?.required ? config.duration.defaultValue : undefined),
+    expressionIntensity: readOptionalNumber(
+      params.generation_expression_intensity,
+    ),
     moderation: readOptionalBoolean(params.generation_moderation),
+    referenceTag: readOptionalString(params.generation_reference_tag),
     seed: readOptionalNumber(params.generation_seed),
     videoInputFiles: collectStringValues(params.generation_input_video_file),
   };
@@ -288,6 +352,18 @@ function createRunwayRequestBody(
     body.contentModeration = {
       publicFigureThreshold: params.moderation ? 'auto' : 'low',
     };
+  }
+
+  if (params.referenceTag !== undefined) {
+    body.referenceTags = [params.referenceTag];
+  }
+
+  if (params.bodyControl !== undefined) {
+    body.bodyControl = params.bodyControl;
+  }
+
+  if (params.expressionIntensity !== undefined) {
+    body.expressionIntensity = params.expressionIntensity;
   }
 
   if (config.kind === 'image') {
@@ -365,6 +441,18 @@ function createRunwaySemanticParams(
     semanticParams.generation_moderation = params.moderation;
   }
 
+  if (params.bodyControl !== undefined) {
+    semanticParams.generation_body_control = params.bodyControl;
+  }
+
+  if (params.expressionIntensity !== undefined) {
+    semanticParams.generation_expression_intensity = params.expressionIntensity;
+  }
+
+  if (params.referenceTag !== undefined) {
+    semanticParams.generation_reference_tag = params.referenceTag;
+  }
+
   if (params.seed !== undefined) {
     semanticParams.generation_seed = params.seed;
   }
@@ -397,9 +485,9 @@ function assertRunwayRequestMatchesModelConfig(
     );
   }
 
-  if (request.inputFiles.length > config.inputFileLimit) {
+  if (request.inputFiles.length > config.inputImageLimit) {
     throw new Error(
-      `Runway model ${request.model} supports at most ${config.inputFileLimit} input image URLs.`,
+      `Runway model ${request.model} supports at most ${config.inputImageLimit} input image URLs.`,
     );
   }
 
@@ -415,9 +503,9 @@ function assertRunwayRequestMatchesModelConfig(
     );
   }
 
-  if (params.videoInputFiles.length > config.videoInputFileLimit) {
+  if (params.videoInputFiles.length > config.inputVideoLimit) {
     throw new Error(
-      `Runway model ${request.model} supports at most ${config.videoInputFileLimit} input video URLs.`,
+      `Runway model ${request.model} supports at most ${config.inputVideoLimit} input video URLs.`,
     );
   }
 
@@ -630,6 +718,28 @@ function readOptionalBoolean(value: unknown) {
   }
 
   return undefined;
+}
+
+function readOptionalString(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function firstFormValue(formData: FormData, names: readonly string[]) {
+  for (const name of names) {
+    const value = formData.get(name);
+
+    if (typeof value === 'string' && value.trim().length === 0) {
+      continue;
+    }
+
+    if (value !== null) {
+      return value;
+    }
+  }
+
+  return null;
 }
 
 function parseInputUrls(value: unknown) {

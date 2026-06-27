@@ -125,7 +125,6 @@ export function StudioModelFields({
       byokConfig ? (
         <ByokFormFields
           key={`byok-${selectedModel}`}
-          defaultDuration={byokConfig.duration?.defaultValue}
           defaultOutputFormat={defaultValue(
             byokConfig.outputFormats,
             DEFAULT_OUTPUT_FORMAT,
@@ -134,19 +133,13 @@ export function StudioModelFields({
             byokConfig.ratios,
             byokConfig.defaultRatio,
           )}
-          duration={byokConfig.duration}
-          inputFileLimit={byokConfig.inputFileLimit}
+          inputFileLimit={byokConfig.inputImageLimit}
           onPromptChange={setPrompt}
           outputFormatOptions={[...byokConfig.outputFormats]}
           prompt={prompt}
-          promptRequired={byokConfig.promptRequired}
           ratioOptions={[...byokConfig.ratios]}
-          requiresImageInput={byokConfig.requiresImageInput}
-          requiresVideoInput={byokConfig.requiresVideoInput}
-          showDuration={Boolean(byokConfig.duration)}
-          showModeration={byokConfig.supportsModeration}
-          showSeed={Boolean(byokConfig.seed)}
-          videoInputFileLimit={byokConfig.videoInputFileLimit}
+          schema={byokConfig.schema}
+          videoInputFileLimit={byokConfig.inputVideoLimit}
         />
       ) : null}
     </div>

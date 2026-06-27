@@ -5,14 +5,12 @@ import { Hourglass, ImageMinus, ImageOff } from 'lucide-react';
 import { ImageLoadingSkeleton } from '../../_components/image-loading-skeleton';
 
 export function GalleryPreviewPanel({
-  contentType,
   previewUrl,
   priority = false,
   prompt,
   ratio,
   status,
 }: {
-  contentType?: string | null;
   previewUrl: string | null;
   priority?: boolean;
   prompt: string;
@@ -28,7 +26,6 @@ export function GalleryPreviewPanel({
   const imageUnavailable = Boolean(
     previewUrl && unavailablePreviewUrl === previewUrl,
   );
-  const isVideoPreview = contentType?.startsWith('video/') ?? false;
   const showPreview = Boolean(previewUrl && !imageUnavailable);
   const showLoadingPreview = showPreview && !imageLoaded;
   const handlePreviewImageRef = useCallback(
@@ -56,57 +53,33 @@ export function GalleryPreviewPanel({
         href={previewUrl}
         target="_blank"
         rel="noreferrer noopener"
-        aria-label={
-          isVideoPreview ? 'Open generated video' : 'Open generated image'
-        }
+        aria-label="Open generated image"
         aria-busy={showLoadingPreview}
         className="group relative mt-4 block aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-slate-950"
       >
         {showLoadingPreview ? <ImageLoadingSkeleton /> : null}
-        {isVideoPreview ? (
-          <video
-            src={previewUrl}
-            muted
-            playsInline
-            preload="metadata"
-            className={`absolute inset-0 size-full bg-black object-contain transition duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onCanPlay={() => {
-              setLoadedPreviewUrl(previewUrl);
-              setUnavailablePreviewUrl((currentPreviewUrl) =>
-                currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
-              );
-            }}
-            onError={() => {
-              setLoadedPreviewUrl(null);
-              setUnavailablePreviewUrl(previewUrl);
-            }}
-          />
-        ) : (
-          <img
-            ref={handlePreviewImageRef}
-            src={previewUrl}
-            alt={`Generated image for: ${prompt}`}
-            className={`absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02] ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            decoding="async"
-            fetchPriority={priority ? 'high' : 'auto'}
-            loading={priority ? 'eager' : 'lazy'}
-            onLoad={() => {
-              setLoadedPreviewUrl(previewUrl);
-              setUnavailablePreviewUrl((currentPreviewUrl) =>
-                currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
-              );
-            }}
-            onError={() => {
-              setLoadedPreviewUrl(null);
-              setUnavailablePreviewUrl(previewUrl);
-            }}
-            sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-          />
-        )}
+        <img
+          ref={handlePreviewImageRef}
+          src={previewUrl}
+          alt={`Generated image for: ${prompt}`}
+          className={`absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-[1.02] ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          decoding="async"
+          fetchPriority={priority ? 'high' : 'auto'}
+          loading={priority ? 'eager' : 'lazy'}
+          onLoad={() => {
+            setLoadedPreviewUrl(previewUrl);
+            setUnavailablePreviewUrl((currentPreviewUrl) =>
+              currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
+            );
+          }}
+          onError={() => {
+            setLoadedPreviewUrl(null);
+            setUnavailablePreviewUrl(previewUrl);
+          }}
+          sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        />
         <RatioOverlay ratio={ratio} />
       </a>
     );

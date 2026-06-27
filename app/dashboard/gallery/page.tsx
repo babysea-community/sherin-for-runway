@@ -27,7 +27,7 @@ import { getStorageProviderStatus } from '@/lib/storage';
 import { getUser } from '@/lib/database/server-actions';
 import { formatDate } from '@/lib/utils';
 import { InlineBabySea } from '@/components/icons/inline-babysea';
-import { InlineByokInferenceProviderLight } from '@/components/icons/inline-inference';
+import { InlineRunwayLight } from '@/components/icons/inline-inference';
 import {
   InlineAwsS3Storage,
   InlineCloudflareR2Storage,
@@ -79,10 +79,6 @@ export default async function GalleryPage() {
 
     return {
       ...generation,
-      assetContentType: getGenerationMetadataString(
-        generation.metadata,
-        'sherin_asset_content_type',
-      ),
       model: request.model,
       outputFormat: request.outputFormat,
       prompt: request.prompt,
@@ -153,7 +149,6 @@ export default async function GalleryPage() {
               </p>
 
               <GalleryPreviewPanel
-                contentType={generation.assetContentType}
                 priority={index < 4}
                 prompt={generation.prompt}
                 previewUrl={generation.previewUrl}
@@ -178,7 +173,6 @@ function createSampleGalleryRow() {
   return {
     created_at: SHERIN_SAMPLE_RESULT.createdAt,
     id: SHERIN_SAMPLE_RESULT.id,
-    assetContentType: 'image/jpeg',
     imageInfo:
       'Sample image only. Your first real generation will replace this card.',
     previewUrl: SHERIN_SAMPLE_RESULT.previewUrl,
@@ -331,7 +325,7 @@ function inferenceProviderSummaryValue(provider: string): ProviderSummaryValue {
     return {
       content: (
         <>
-          <InlineByokInferenceProviderLight
+          <InlineRunwayLight
             className="h-3.5 w-5 shrink-0"
             aria-hidden="true"
           />

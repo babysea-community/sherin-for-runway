@@ -135,12 +135,6 @@ export default async function StudioPage({ searchParams }: PageProps) {
   const latestAssetUrl = latestGeneration
     ? await resolveAssetUrl(latestGeneration)
     : null;
-  const latestAssetContentType = latestGeneration
-    ? getGenerationMetadataString(
-        latestGeneration.metadata,
-        'sherin_asset_content_type',
-      )
-    : null;
   const latestPreviewUrl =
     latestAssetUrl ??
     (showSampleResult ? SHERIN_SAMPLE_RESULT.previewUrl : null);
@@ -256,7 +250,6 @@ export default async function StudioPage({ searchParams }: PageProps) {
                   : null
             }
             generating={showGeneratingPreview}
-            previewContentType={latestAssetContentType}
             previewUrl={latestPreviewUrl}
             stage={latestActiveStage}
           />

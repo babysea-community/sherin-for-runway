@@ -27,14 +27,12 @@ export function StudioResultPanel({
   error,
   generation,
   generating,
-  previewContentType,
   previewUrl,
   stage,
 }: {
   error?: StudioResultError | null;
   generation: StudioResultGeneration | null;
   generating: boolean;
-  previewContentType?: string | null;
   previewUrl: string | null;
   stage?: string | null;
 }) {
@@ -52,7 +50,6 @@ export function StudioResultPanel({
   const imageUnavailable = Boolean(
     previewUrl && unavailablePreviewUrl === previewUrl,
   );
-  const isVideoPreview = previewContentType?.startsWith('video/') ?? false;
   const showPreview = Boolean(previewUrl && !imageUnavailable);
   const showLoadingPreview = showPreview && !imageLoaded;
   const showGeneratingPreview = generating && !showPreview;
@@ -85,40 +82,7 @@ export function StudioResultPanel({
   return (
     <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">
       <div className="relative flex aspect-square w-full flex-none overflow-hidden rounded-xl border border-white/10 bg-slate-950">
-        {showPreview && previewUrl && isVideoPreview ? (
-          <div
-            aria-busy={showLoadingPreview}
-            className="relative block size-full"
-          >
-            {showLoadingPreview ? <ImageLoadingSkeleton /> : null}
-            <video
-              src={previewUrl}
-              controls
-              playsInline
-              className={`absolute inset-0 size-full bg-black object-contain transition duration-500 ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-              onCanPlay={() => {
-                setLoadedPreviewUrl(previewUrl);
-                setUnavailablePreviewUrl((currentPreviewUrl) =>
-                  currentPreviewUrl === previewUrl ? null : currentPreviewUrl,
-                );
-              }}
-              onError={() => {
-                setLoadedPreviewUrl(null);
-                setUnavailablePreviewUrl(previewUrl);
-              }}
-            />
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="absolute right-3 top-3 rounded-full border border-white/10 bg-slate-950/75 px-3 py-1 text-xs font-medium text-slate-100 shadow-lg shadow-black/20 backdrop-blur transition hover:bg-slate-900"
-            >
-              Open
-            </a>
-          </div>
-        ) : showPreview && previewUrl ? (
+        {showPreview && previewUrl ? (
           <a
             href={previewUrl}
             target="_blank"

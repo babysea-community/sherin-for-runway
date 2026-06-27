@@ -1,54 +1,30 @@
 /**
  * Sherin model-family registry facade.
  *
- * Provider-specific model catalogs live beside their direct provider adapter
- * (for this variant: `lib/inference/runway/family.ts`). When cloning Sherin for
- * a new provider family, keep this facade stable and swap the provider family
- * imports plus the direct provider shim.
+ * Provider-specific model catalogs live beside their direct provider adapter.
+ * When cloning Sherin for a new provider family, keep this facade stable and
+ * swap only the provider family import plus the direct provider shim.
  */
 import {
-  RUNWAY_BABYSEA_MODEL_CONFIGS,
-  RUNWAY_DEFAULT_MODEL_ID,
-  RUNWAY_DEFAULT_OUTPUT_FORMAT,
-  RUNWAY_DEFAULT_RATIO,
-  RUNWAY_DIMENSION_RATIOS,
-  RUNWAY_MODEL_CONFIGS,
-  RUNWAY_MODEL_ID_PREFIX,
-  RUNWAY_MODEL_IDS,
-  RUNWAY_MODEL_OPTIONS,
-  RUNWAY_PROVIDER_ID,
-  RUNWAY_PROVIDER_KEYWORD,
-  RUNWAY_PROVIDER_LABEL,
-  RUNWAY_RATIO_OPTIONS,
-  RUNWAY_RESOLUTION_OPTIONS,
-  hasRunwayModelConfig,
-  type RunwayDimensionRatio,
-  type RunwayOutputFormat,
-  type RunwayRatio,
-  type RunwayResolution,
+  SHERIN_BYOK_FAMILY as PROVIDER_FAMILY,
+  hasProviderModelConfig,
 } from './inference/runway/family';
 
-export {
-  RUNWAY_BABYSEA_MODEL_CONFIGS,
-  RUNWAY_MODEL_CONFIGS,
-  RUNWAY_MODEL_IDS,
-  hasRunwayModelConfig,
-  type RunwayModelConfig,
-} from './inference/runway/family';
+export { SHERIN_BYOK_FAMILY as BYOK_FAMILY } from './inference/runway/family';
 
-export const MODEL_OPTIONS = RUNWAY_MODEL_OPTIONS;
+export const MODEL_OPTIONS = PROVIDER_FAMILY.modelOptions;
 export type SherinModelId = (typeof MODEL_OPTIONS)[number]['id'];
 
-export const MODEL_IDS = RUNWAY_MODEL_IDS as [
+export const MODEL_IDS = PROVIDER_FAMILY.modelIds as [
   SherinModelId,
   ...SherinModelId[],
 ];
 
-export const DEFAULT_MODEL_ID: SherinModelId = RUNWAY_DEFAULT_MODEL_ID;
-export const BYOK_INFERENCE_PROVIDER_ID = RUNWAY_PROVIDER_ID;
-export const BYOK_INFERENCE_PROVIDER_LABEL = RUNWAY_PROVIDER_LABEL;
-export const BYOK_INFERENCE_PROVIDER_KEYWORD = RUNWAY_PROVIDER_KEYWORD;
-export const BYOK_MODEL_ID_PREFIX = RUNWAY_MODEL_ID_PREFIX;
+export const DEFAULT_MODEL_ID: SherinModelId = PROVIDER_FAMILY.defaultModelId;
+export const BYOK_INFERENCE_PROVIDER_ID = PROVIDER_FAMILY.providerId;
+export const BYOK_INFERENCE_PROVIDER_LABEL = PROVIDER_FAMILY.providerLabel;
+export const BYOK_INFERENCE_PROVIDER_KEYWORD = PROVIDER_FAMILY.providerKeyword;
+export const BYOK_MODEL_ID_PREFIX = PROVIDER_FAMILY.modelIdPrefix;
 export type ByokInferenceProviderId = typeof BYOK_INFERENCE_PROVIDER_ID;
 
 export function isSherinModelId(value: unknown): value is SherinModelId {
@@ -57,42 +33,46 @@ export function isSherinModelId(value: unknown): value is SherinModelId {
   );
 }
 
-export const RATIOS = RUNWAY_DIMENSION_RATIOS;
-export type SherinDimensionRatio = RunwayDimensionRatio;
-export const RATIO_OPTIONS = RUNWAY_RATIO_OPTIONS;
-export type SherinRatio = RunwayRatio;
+export const RATIOS = {} as Record<string, { width: number; height: number }>;
+export type SherinDimensionRatio = string;
+export const RATIO_OPTIONS = PROVIDER_FAMILY.ratioOptions;
+export type SherinRatio = (typeof RATIO_OPTIONS)[number];
 
-export const OUTPUT_FORMATS = ['png', 'mp4'] as const;
-export type SherinOutputFormat = RunwayOutputFormat;
+export const OUTPUT_FORMATS = PROVIDER_FAMILY.outputFormats;
+export type SherinOutputFormat = (typeof OUTPUT_FORMATS)[number];
 
-export const DEFAULT_RATIO = RUNWAY_DEFAULT_RATIO;
+export const DEFAULT_RATIO: SherinDimensionRatio = PROVIDER_FAMILY.defaultRatio;
 export const DEFAULT_OUTPUT_FORMAT: SherinOutputFormat =
-  RUNWAY_DEFAULT_OUTPUT_FORMAT;
-export const RESOLUTION_OPTIONS = RUNWAY_RESOLUTION_OPTIONS;
-export type SherinResolution = RunwayResolution;
-export const DEFAULT_RESOLUTION: SherinResolution | undefined = undefined;
+  PROVIDER_FAMILY.defaultOutputFormat;
+export const RESOLUTION_OPTIONS = PROVIDER_FAMILY.resolutionOptions;
+export type SherinResolution = (typeof RESOLUTION_OPTIONS)[number];
+export const DEFAULT_RESOLUTION: SherinResolution | undefined =
+  PROVIDER_FAMILY.defaultResolution as SherinResolution | undefined;
 export const GENERATION_PROMPT_PLACEHOLDER =
-  'A cinematic camera move through soft morning light...';
+  'A cinematic editorial portrait with arctic light, soft film grain...';
 
 export const DEFAULT_GENERATION_OUTPUT_NUMBER = 1;
 export const DEFAULT_GENERATION_OUTPUT_QUALITY = 80;
 export const DEFAULT_GENERATION_GUIDANCE_SCALE = 3.5;
 export const DEFAULT_GENERATION_NUM_INFERENCE_STEPS = 28;
-export const DEFAULT_BYOK_GUIDANCE = 5;
-export const DEFAULT_BYOK_STEPS = 50;
-export const DEFAULT_BYOK_SAFETY_TOLERANCE = 2;
+export const DEFAULT_BYOK_GUIDANCE = PROVIDER_FAMILY.defaultGenerationGuidance;
+export const DEFAULT_BYOK_STEPS = PROVIDER_FAMILY.defaultGenerationSteps;
+export const DEFAULT_BYOK_SAFETY_TOLERANCE =
+  PROVIDER_FAMILY.defaultSafetyTolerance;
 
-export const BYOK_MODEL_CONFIGS = RUNWAY_MODEL_CONFIGS;
-export const BYOK_MODEL_IDS = RUNWAY_MODEL_IDS;
+export const BYOK_MODEL_CONFIGS = PROVIDER_FAMILY.modelConfigs;
+export const BYOK_MODEL_IDS = PROVIDER_FAMILY.modelIds;
 
 export type BabySeaModelConfig =
-  (typeof RUNWAY_BABYSEA_MODEL_CONFIGS)[SherinModelId];
+  (typeof PROVIDER_FAMILY.babySeaModelConfigs)[SherinModelId];
 
-export const BABYSEA_MODEL_CONFIGS = RUNWAY_BABYSEA_MODEL_CONFIGS;
+export const BABYSEA_MODEL_CONFIGS = PROVIDER_FAMILY.babySeaModelConfigs;
 
 export const SHERIN_INPUT_FILE_LIMIT = Math.max(
-  ...Object.values(BYOK_MODEL_CONFIGS).map((model) => model.inputFileLimit),
-  ...Object.values(BABYSEA_MODEL_CONFIGS).map((model) => model.inputFileLimit),
+  ...Object.values(BYOK_MODEL_CONFIGS).map((model) =>
+    Math.max(model.inputImageLimit, model.inputVideoLimit),
+  ),
+  ...Object.values(BABYSEA_MODEL_CONFIGS).map((model) => model.inputMediaLimit),
 );
 
 export type InferenceProviderScope = 'babysea' | ByokInferenceProviderId | null;
@@ -100,7 +80,7 @@ export type InferenceProviderScope = 'babysea' | ByokInferenceProviderId | null;
 export function hasByokModelConfig(
   model: SherinModelId,
 ): model is keyof typeof BYOK_MODEL_CONFIGS & SherinModelId {
-  return hasRunwayModelConfig(model);
+  return hasProviderModelConfig(model);
 }
 
 export function getModelOptionsForInferenceProvider(
@@ -137,7 +117,13 @@ export function getDefaultModelIdForInferenceProvider(
 }
 
 export function getBabySeaInputFileLimit(model: SherinModelId) {
-  return BABYSEA_MODEL_CONFIGS[model].inputFileLimit;
+  const config = BABYSEA_MODEL_CONFIGS[model];
+
+  if (!config) {
+    throw new Error(`BabySea does not support model ${model}.`);
+  }
+
+  return config.inputMediaLimit;
 }
 
 export function getBabySeaProviderOrderOverride(modelIdentifier: string) {

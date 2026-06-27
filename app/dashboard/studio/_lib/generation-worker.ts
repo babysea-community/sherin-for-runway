@@ -13,19 +13,26 @@ import {
   BABYSEA_IDEMPOTENCY_IN_PROGRESS_CODE,
   classifyInferenceError,
 } from '@/lib/inference/errors';
-import { getStorageProviderStatus, persistRemoteAsset } from '@/lib/storage';
+import {
+  getStorageProviderStatus,
+  persistRemoteAsset,
+  removeStoredAssets,
+} from '@/lib/storage';
 import { createSupabaseAdminClient } from '@/lib/database/admin';
 import { errorMessage } from '@/lib/utils';
 
 import {
   mergeGenerationMetadata,
+  readQueuedGenerationInputFileAssets,
   readQueuedGenerationJob,
   readQueuedGenerationInputFileUploadPaths,
+  retainedStorageBytesAfterInputCleanup,
   type QueuedGenerationJob,
   type GenerationInput,
 } from './generation-job';
 import {
   cleanupInputFileUploads,
+  createInputFileAssetUrls,
   createSignedInputFileUrls,
 } from './input-file-uploads';
 import {
@@ -487,11 +494,16 @@ async function processClaimedGeneration(
         storageProvider: storedAsset.providerId,
       });
 
-      await cleanupInputFileUploads(
-        admin,
-        claimed.row.user_id,
-        job.inputFileUploadPaths,
-      );
+      if (
+        await cleanupQueuedGenerationInputFiles(admin, claimed.row.user_id, job)
+      ) {
+        await updateGenerationAfterInputCleanup(
+          admin,
+          claimed.row.id,
+          retainedStorageBytesAfterInputCleanup(storedAsset.byteLength),
+          generationMetadata,
+        );
+      }
       revalidateStudioPaths();
       return 'succeeded' as const;
     } catch (storageError) {
@@ -524,6 +536,7 @@ async function processClaimedGeneration(
         {
           error: storageErrorMessage,
           metadata: generationMetadata,
+          storage_bytes: inputFileAssetsByteLength(job),
           status: 'unavailable',
         },
       );
@@ -537,11 +550,16 @@ async function processClaimedGeneration(
         return 'skipped' as const;
       }
 
-      await cleanupInputFileUploads(
-        admin,
-        claimed.row.user_id,
-        job.inputFileUploadPaths,
-      );
+      if (
+        await cleanupQueuedGenerationInputFiles(admin, claimed.row.user_id, job)
+      ) {
+        await updateGenerationAfterInputCleanup(
+          admin,
+          claimed.row.id,
+          retainedStorageBytesAfterInputCleanup(),
+          generationMetadata,
+        );
+      }
       revalidateStudioPaths();
       return 'unavailable' as const;
     }
@@ -653,6 +671,8 @@ async function processClaimedGeneration(
         {
           error: message,
           metadata: generationMetadata,
+          storage_bytes:
+            inputFileAssetsByteLengthFromMetadata(generationMetadata),
           status: 'failed',
         },
       );
@@ -677,11 +697,20 @@ async function processClaimedGeneration(
     if (failedStateSaved) {
       try {
         const job = readQueuedGenerationJob(claimed.row.metadata);
-        await cleanupInputFileUploads(
-          admin,
-          claimed.row.user_id,
-          job.inputFileUploadPaths,
-        );
+        if (
+          await cleanupQueuedGenerationInputFiles(
+            admin,
+            claimed.row.user_id,
+            job,
+          )
+        ) {
+          await updateGenerationAfterInputCleanup(
+            admin,
+            claimed.row.id,
+            retainedStorageBytesAfterInputCleanup(),
+            generationMetadata,
+          );
+        }
       } catch {
         // If the job payload itself is malformed, there are no trusted storage
         // paths to clean up. The failure row already records the parse error.
@@ -708,14 +737,72 @@ async function prepareInferenceJob({
   processingToken: string;
   userId: string;
 }): Promise<{ job: QueuedGenerationJob; metadata: Json }> {
-  if (job.inputFileUploadPaths.length === 0) {
+  if (job.inputFileAssets.length > 0) {
+    const imageAssets = job.inputFileAssets.filter((asset) =>
+      asset.contentType.startsWith('image/'),
+    );
+    const videoAssets = job.inputFileAssets.filter((asset) =>
+      asset.contentType.startsWith('video/'),
+    );
+    const imageUrls = await createInputFileAssetUrls(imageAssets);
+    const videoUrls = await createInputFileAssetUrls(videoAssets);
+    const preparedJob = {
+      ...job,
+      values: {
+        ...job.values,
+        generation_input_file: imageUrls,
+        byok_params:
+          videoUrls.length > 0
+            ? {
+                ...job.values.byok_params,
+                generation_input_video_file: videoUrls,
+              }
+            : job.values.byok_params,
+      },
+    };
+    const preparedMetadata = mergeGenerationMetadata(metadata, {
+      sherin_job: preparedJob,
+    });
+
+    await updateGenerationMetadata(
+      admin,
+      generationId,
+      processingToken,
+      preparedMetadata,
+    );
+
+    return { job: preparedJob, metadata: preparedMetadata };
+  }
+
+  if (job.inputFileUploadPaths.length === 0 || hasStableInputFileUrls(job)) {
     return { job, metadata };
   }
 
-  if (hasStableInputFileUrls(job)) {
-    return { job, metadata };
-  }
+  return prepareLegacyInputFileUploadPaths({
+    admin,
+    generationId,
+    job,
+    metadata,
+    processingToken,
+    userId,
+  });
+}
 
+async function prepareLegacyInputFileUploadPaths({
+  admin,
+  generationId,
+  job,
+  metadata,
+  processingToken,
+  userId,
+}: {
+  admin: SupabaseAdminClient;
+  generationId: string;
+  job: QueuedGenerationJob;
+  metadata: Json;
+  processingToken: string;
+  userId: string;
+}) {
   const inputFileUrls = await createSignedInputFileUrls(
     admin,
     userId,
@@ -752,6 +839,13 @@ function hasStableInputFileUrls(job: QueuedGenerationJob) {
 
 function inputFileAssetsByteLength(job: QueuedGenerationJob) {
   return job.inputFileAssets.reduce(
+    (total, asset) => total + asset.byteLength,
+    0,
+  );
+}
+
+function inputFileAssetsByteLengthFromMetadata(metadata: Json | null) {
+  return readQueuedGenerationInputFileAssets(metadata).reduce(
     (total, asset) => total + asset.byteLength,
     0,
   );
@@ -819,12 +913,53 @@ async function updateClaimedGenerationWithRetry(
   throw new Error(errorMessage(lastError));
 }
 
+async function updateGenerationAfterInputCleanup(
+  admin: SupabaseAdminClient,
+  generationId: string,
+  storageBytes: number,
+  metadata: Json,
+) {
+  const cleanedMetadata = removeQueuedInputFileAssetsFromMetadata(metadata);
+  const { error } = await admin
+    .from('generations')
+    .update({ metadata: cleanedMetadata, storage_bytes: storageBytes })
+    .eq('id', generationId);
+
+  if (error) {
+    console.warn('Could not update generation after input cleanup', error);
+  }
+}
+
+function removeQueuedInputFileAssetsFromMetadata(metadata: Json | null) {
+  try {
+    const job = readQueuedGenerationJob(metadata);
+
+    return mergeGenerationMetadata(metadata, {
+      sherin_input_file_count: 0,
+      sherin_input_file_storage_paths: [],
+      sherin_input_files_cleaned_at: new Date().toISOString(),
+      sherin_job: {
+        ...job,
+        inputFileAssets: [],
+        inputFileUploadPaths: [],
+      },
+    });
+  } catch {
+    return mergeGenerationMetadata(metadata, {
+      sherin_input_files_cleaned_at: new Date().toISOString(),
+    });
+  }
+}
+
 async function failAbandonedGeneration(
   admin: SupabaseAdminClient,
   generation: GenerationRow,
   staleBefore: string,
 ): Promise<boolean> {
   const message = `Generation could not be completed after ${MAX_GENERATION_ATTEMPTS} worker attempts.`;
+  const inputFileBytes = inputFileAssetsByteLengthFromMetadata(
+    generation.metadata,
+  );
   const metadata = mergeGenerationMetadata(generation.metadata, {
     sherin_error: message,
     sherin_failed_at: new Date().toISOString(),
@@ -837,6 +972,7 @@ async function failAbandonedGeneration(
     .update({
       error: message,
       metadata,
+      storage_bytes: inputFileBytes,
       status: 'failed',
     })
     .eq('id', generation.id)
@@ -849,14 +985,73 @@ async function failAbandonedGeneration(
   }
 
   if ((data?.length ?? 0) > 0) {
-    await cleanupInputFileUploads(
-      admin,
-      generation.user_id,
-      readQueuedGenerationInputFileUploadPaths(generation.metadata),
-    );
+    if (
+      await cleanupQueuedGenerationInputFiles(
+        admin,
+        generation.user_id,
+        generation.metadata,
+      )
+    ) {
+      await updateGenerationAfterInputCleanup(
+        admin,
+        generation.id,
+        retainedStorageBytesAfterInputCleanup(),
+        metadata,
+      );
+    }
   }
 
   return (data?.length ?? 0) > 0;
+}
+
+async function cleanupQueuedGenerationInputFiles(
+  admin: SupabaseAdminClient,
+  userId: string,
+  jobOrMetadata: QueuedGenerationJob | Json | null,
+) {
+  let inputFileAssets: QueuedGenerationJob['inputFileAssets'];
+  let inputFileUploadPaths: QueuedGenerationJob['inputFileUploadPaths'];
+
+  if (isQueuedGenerationJob(jobOrMetadata)) {
+    inputFileAssets = jobOrMetadata.inputFileAssets;
+    inputFileUploadPaths = jobOrMetadata.inputFileUploadPaths;
+  } else {
+    inputFileAssets = readQueuedGenerationInputFileAssets(jobOrMetadata);
+    inputFileUploadPaths =
+      readQueuedGenerationInputFileUploadPaths(jobOrMetadata);
+  }
+
+  if (inputFileAssets.length > 0) {
+    try {
+      await removeStoredAssets(
+        inputFileAssets.map((asset) => ({
+          storagePath: asset.storagePath,
+          storageProvider: asset.storageProvider,
+        })),
+      );
+    } catch (error) {
+      console.warn(
+        'Could not remove stored input media after terminal state',
+        error,
+      );
+
+      return false;
+    }
+  }
+
+  return await cleanupInputFileUploads(admin, userId, inputFileUploadPaths);
+}
+
+function isQueuedGenerationJob(
+  value: QueuedGenerationJob | Json | null,
+): value is QueuedGenerationJob {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'inputFileAssets' in value &&
+    'inputFileUploadPaths' in value
+  );
 }
 
 function toInferenceRequest({

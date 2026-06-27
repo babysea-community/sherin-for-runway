@@ -27,43 +27,17 @@ export const RUNWAY_MODEL_IDS = RUNWAY_MODEL_OPTIONS.map(
 export const RUNWAY_DEFAULT_MODEL_ID: RunwayModelId = 'runway/gen-4-image';
 export const RUNWAY_MODEL_ID_PREFIX = `${RUNWAY_PROVIDER_ID}/`;
 
-export const RUNWAY_DIMENSION_RATIOS = {
-  '1024:1024': { width: 1024, height: 1024 },
-  '1080:1080': { width: 1080, height: 1080 },
-  '1168:880': { width: 1168, height: 880 },
-  '1360:768': { width: 1360, height: 768 },
-  '1440:1080': { width: 1440, height: 1080 },
-  '1080:1440': { width: 1080, height: 1440 },
-  '1808:768': { width: 1808, height: 768 },
-  '1920:1080': { width: 1920, height: 1080 },
-  '1080:1920': { width: 1080, height: 1920 },
-  '2112:912': { width: 2112, height: 912 },
-  '1280:720': { width: 1280, height: 720 },
-  '720:1280': { width: 720, height: 1280 },
-  '720:720': { width: 720, height: 720 },
-  '960:720': { width: 960, height: 720 },
-  '720:960': { width: 720, height: 960 },
-  '1680:720': { width: 1680, height: 720 },
-  '1104:832': { width: 1104, height: 832 },
-  '832:1104': { width: 832, height: 1104 },
-  '1584:672': { width: 1584, height: 672 },
-  '848:480': { width: 848, height: 480 },
-  '640:480': { width: 640, height: 480 },
-  '1:1': { width: 1024, height: 1024 },
-  '3:4': { width: 832, height: 1104 },
-  '4:3': { width: 1104, height: 832 },
-  '9:16': { width: 720, height: 1280 },
-  '16:9': { width: 1280, height: 720 },
-  '21:9': { width: 1584, height: 672 },
-} as const satisfies Record<string, { width: number; height: number }>;
-
-export type RunwayDimensionRatio = keyof typeof RUNWAY_DIMENSION_RATIOS;
+export type RunwayDimensionRatio = string;
 export type RunwayRatio = string;
 export type RunwayOutputFormat = 'mp4' | 'png';
 
-export const RUNWAY_RATIO_OPTIONS = Object.keys(
-  RUNWAY_DIMENSION_RATIOS,
-) as RunwayDimensionRatio[];
+export const RUNWAY_RATIO_OPTIONS = uniqueStrings(
+  RUNWAY_MODEL_IDS.flatMap((model) =>
+    enumStrings(
+      getField(getRunwaySemanticModel(model), 'generation_aspect_ratio'),
+    ),
+  ),
+);
 export const RUNWAY_OUTPUT_FORMATS = ['png', 'mp4'] as const;
 export const RUNWAY_DEFAULT_RATIO = '1024:1024';
 export const RUNWAY_DEFAULT_OUTPUT_FORMAT: RunwayOutputFormat = 'png';
@@ -72,12 +46,13 @@ export type RunwayResolution = (typeof RUNWAY_RESOLUTION_OPTIONS)[number];
 
 export type RunwayModelConfig = {
   providerModel: string;
+  schema: readonly SemanticLadyField[];
   kind: 'image' | 'video';
   workflows: readonly string[];
-  inputFileLimit: number;
+  inputImageLimit: number;
   requiresImageInput: boolean;
   supportsImageInput: boolean;
-  videoInputFileLimit: number;
+  inputVideoLimit: number;
   requiresVideoInput: boolean;
   supportsVideoInput: boolean;
   outputFormats: readonly RunwayOutputFormat[];
@@ -103,7 +78,7 @@ export type RunwayModelConfig = {
 
 export type RunwayBabySeaModelConfig = {
   identifier: RunwayModelId;
-  inputFileLimit: number;
+  inputMediaLimit: number;
   outputFormatMap: Partial<Record<string, string>>;
   providerOrderOptions?: readonly string[];
 };
@@ -119,9 +94,32 @@ export const RUNWAY_BABYSEA_MODEL_CONFIGS = Object.fromEntries(
   ]),
 ) as Record<RunwayModelId, RunwayBabySeaModelConfig>;
 
+export const SHERIN_BYOK_FAMILY = {
+  babySeaModelConfigs: RUNWAY_BABYSEA_MODEL_CONFIGS,
+  defaultGenerationGuidance: 5,
+  defaultGenerationSteps: 50,
+  defaultModelId: RUNWAY_DEFAULT_MODEL_ID,
+  defaultOutputFormat: RUNWAY_DEFAULT_OUTPUT_FORMAT,
+  defaultRatio: RUNWAY_DEFAULT_RATIO,
+  defaultResolution: undefined,
+  defaultSafetyTolerance: 2,
+  modelConfigs: RUNWAY_MODEL_CONFIGS,
+  modelIdPrefix: RUNWAY_MODEL_ID_PREFIX,
+  modelIds: RUNWAY_MODEL_IDS,
+  modelOptions: RUNWAY_MODEL_OPTIONS,
+  outputFormats: RUNWAY_OUTPUT_FORMATS,
+  providerId: RUNWAY_PROVIDER_ID,
+  providerKeyword: RUNWAY_PROVIDER_KEYWORD,
+  providerLabel: RUNWAY_PROVIDER_LABEL,
+  ratioOptions: RUNWAY_RATIO_OPTIONS,
+  resolutionOptions: RUNWAY_RESOLUTION_OPTIONS,
+} as const;
+
 export function hasRunwayModelConfig(model: string): model is RunwayModelId {
   return model in RUNWAY_MODEL_CONFIGS;
 }
+
+export const hasProviderModelConfig = hasRunwayModelConfig;
 
 export function getRunwaySemanticModel(
   modelIdentifier: RunwayModelId,
@@ -144,7 +142,7 @@ function createRunwayBabySeaModelConfig(
 
   return {
     identifier: model,
-    inputFileLimit: Math.max(config.inputFileLimit, config.videoInputFileLimit),
+    inputMediaLimit: Math.max(config.inputImageLimit, config.inputVideoLimit),
     outputFormatMap: {},
   };
 }
@@ -156,17 +154,20 @@ function createRunwayModelConfig(model: RunwayModelId): RunwayModelConfig {
   const seed = getField(semanticModel, 'generation_seed');
   const imageInput = getField(semanticModel, 'generation_input_image_file');
   const videoInput = getField(semanticModel, 'generation_input_video_file');
+  const inputImageLimit = imageInput ? imageInputLimit(model) : 0;
+  const inputVideoLimit = videoInput ? 1 : 0;
   const outputFormat = semanticModel.kind === 'video' ? 'mp4' : 'png';
   const ratios = enumStrings(aspectRatio);
 
   return {
     providerModel: semanticModel.providerModel,
+    schema: semanticModel.schema,
     kind: semanticModel.kind,
     workflows: semanticModel.workflows,
-    inputFileLimit: imageInput ? imageInputLimit(model) : 0,
+    inputImageLimit,
     requiresImageInput: Boolean(imageInput?.required),
     supportsImageInput: Boolean(imageInput),
-    videoInputFileLimit: videoInput ? 1 : 0,
+    inputVideoLimit,
     requiresVideoInput: Boolean(videoInput?.required),
     supportsVideoInput: Boolean(videoInput),
     outputFormats: [outputFormat],
@@ -233,6 +234,10 @@ function numberDefault(field: SemanticLadyField | undefined) {
 
 function numberBound(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values)];
 }
 
 function clampDurationDefault(field: SemanticLadyField) {

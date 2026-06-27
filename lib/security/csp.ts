@@ -43,7 +43,7 @@ function buildContentSecurityPolicy() {
     'https://api.us.babysea.ai', // us-region
     'https://api.eu.babysea.ai', // eu-region
     'https://api.jp.babysea.ai', // apac-region
-    'https://api.dev.runwayml.com', // Runway
+    'https://api.dev.runwayml.com', // global
   ]);
   const imageHosts = new Set<string>([
     "'self'",
@@ -94,7 +94,6 @@ function buildContentSecurityPolicy() {
     'script-src-attr': ["'none'"],
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': Array.from(imageHosts),
-    'media-src': Array.from(imageHosts),
     'font-src': ["'self'", 'data:'],
     'connect-src': Array.from(connectHosts),
     'frame-ancestors': ["'none'"],

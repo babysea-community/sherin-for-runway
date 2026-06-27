@@ -86,8 +86,6 @@ export function InlineBlackForestLabsLight({
   );
 }
 
-export const InlineByokInferenceProviderLight = InlineRunwayLight;
-
 export function InlineBytePlus({
   className,
   ...props

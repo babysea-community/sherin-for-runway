@@ -18,7 +18,8 @@ export type InferenceRequest = {
 };
 
 export type InferencePreparedRequest = {
-  inputFileLimit: number;
+  inputImageLimit: number;
+  inputVideoLimit?: number;
   request: InferenceRequest;
 };
 

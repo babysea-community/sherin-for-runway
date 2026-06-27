@@ -49,7 +49,7 @@ type StorageWriteContext = {
   fallbackFromProviderId?: StorageProviderId | null;
 };
 
-export const MAX_IMAGE_ASSET_BYTES = 50 * 1024 * 1024;
+export const MAX_ASSET_BYTES = 50 * 1024 * 1024;
 export const MAX_VIDEO_ASSET_BYTES = 500 * 1024 * 1024;
 export const DEFAULT_USER_STORAGE_QUOTA_GB = 10;
 const BYTES_PER_GB = 1_000_000_000;
@@ -57,14 +57,14 @@ const ASSET_FETCH_TIMEOUT_MS = 30_000;
 const ASSET_DOWNLOAD_RETRY_DELAYS_MS = [0, 750, 2_000] as const;
 const STORAGE_WRITE_RETRY_DELAYS_MS = [0, 750, 2_000] as const;
 const ALLOWED_ASSET_HOST_SUFFIXES = [
+  // Inference
+  'runwayml.com',
+  'cloudfront.net',
   // BabySea
   'app.babysea.ai',
   'app.us.babysea.ai',
   'app.eu.babysea.ai',
   'app.jp.babysea.ai',
-  // Runway
-  'runwayml.com',
-  'cloudfront.net',
 ];
 const ALLOWED_ASSET_CONTENT_TYPES = new Set([
   'image/png',
@@ -832,10 +832,10 @@ function parseContentLength(value: string | null) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-function assertAssetByteLimit(byteLength: number, contentType: string) {
+function assertAssetByteLimit(byteLength: number, contentType = 'image/jpeg') {
   const limit = contentType.startsWith('video/')
     ? MAX_VIDEO_ASSET_BYTES
-    : MAX_IMAGE_ASSET_BYTES;
+    : MAX_ASSET_BYTES;
 
   if (byteLength > limit) {
     throw new Error(`Generated asset exceeds ${formatBytes(limit)} limit.`);

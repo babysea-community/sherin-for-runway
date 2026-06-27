@@ -25,7 +25,7 @@ import { getStorageProviderStatus, resolveStoredAssetUrl } from '@/lib/storage';
 import { getUser } from '@/lib/database/server-actions';
 import { formatDate } from '@/lib/utils';
 import { InlineBabySea } from '@/components/icons/inline-babysea';
-import { InlineByokInferenceProviderLight } from '@/components/icons/inline-inference';
+import { InlineRunwayLight } from '@/components/icons/inline-inference';
 import {
   InlineAwsS3Storage,
   InlineCloudflareR2Storage,
@@ -347,7 +347,7 @@ function inferenceProviderSummaryValue(provider: string): ProviderSummaryValue {
     return {
       content: (
         <>
-          <InlineByokInferenceProviderLight
+          <InlineRunwayLight
             className="h-3.5 w-5 shrink-0"
             aria-hidden="true"
           />

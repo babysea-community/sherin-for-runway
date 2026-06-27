@@ -122,6 +122,16 @@ export function createQueuedGenerationJob(
   });
 }
 
+export function retainedStorageBytesAfterInputCleanup(
+  retainedAssetBytes?: number | null,
+) {
+  return typeof retainedAssetBytes === 'number' &&
+    Number.isFinite(retainedAssetBytes) &&
+    retainedAssetBytes > 0
+    ? Math.trunc(retainedAssetBytes)
+    : 0;
+}
+
 export function readQueuedGenerationInputFileAssets(metadata: Json | null) {
   try {
     return readQueuedGenerationJob(metadata).inputFileAssets;
@@ -221,10 +231,6 @@ function validatePromptForModel(
 ) {
   const prompt = value.prompt.trim();
 
-  if (prompt.length >= 3) {
-    return;
-  }
-
   if (hasByokModelConfig(value.model)) {
     const promptField = getModel(value.model)?.schema.find(
       (field) => field.name === 'generation_prompt',
@@ -233,6 +239,14 @@ function validatePromptForModel(
     if (!promptField) {
       return;
     }
+
+    if (!promptField.required && prompt.length === 0) {
+      return;
+    }
+  }
+
+  if (prompt.length >= 3) {
+    return;
   }
 
   context.addIssue({

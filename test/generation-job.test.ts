@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createQueuedGenerationJob,
   readQueuedGenerationJob,
+  retainedStorageBytesAfterInputCleanup,
 } from '@/app/dashboard/studio/_lib/generation-job';
 import type { Json } from '@/lib/database.types';
 import { DEFAULT_MODEL_ID } from '@/lib/app-config';
@@ -46,6 +47,12 @@ describe('queued generation jobs', () => {
     expect(job.values.generation_input_file).toEqual(inputUrls);
     expect(job.inputFileAssets).toEqual(inputFileAssets);
     expect(job.inputFileUploadPaths).toEqual([]);
+  });
+
+  it('counts only retained output bytes after input assets are cleaned up', () => {
+    expect(retainedStorageBytesAfterInputCleanup(4096)).toBe(4096);
+    expect(retainedStorageBytesAfterInputCleanup()).toBe(0);
+    expect(retainedStorageBytesAfterInputCleanup(-1)).toBe(0);
   });
 });
 
