@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { InlineByokModelProviderLight } from '@/components/icons/inline-model';
+import { InlineRunwayLight } from '@/components/icons/inline-model';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -177,10 +177,7 @@ function ModelVendorIcon({ modelId }: { modelId: string }) {
 
   return (
     <span className="flex size-5 shrink-0 items-center justify-center rounded bg-[#48d1cc1a]">
-      <InlineByokModelProviderLight
-        className="h-2.5 w-3.5 shrink-0"
-        aria-hidden="true"
-      />
+      <InlineRunwayLight className="h-2.5 w-3.5 shrink-0" aria-hidden="true" />
     </span>
   );
 }

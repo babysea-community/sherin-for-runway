@@ -67,8 +67,6 @@ export function InlineBlackForestLabsLight({
   );
 }
 
-export const InlineByokModelProviderLight = InlineRunwayLight;
-
 export function InlineByteDance({
   className,
   ...props

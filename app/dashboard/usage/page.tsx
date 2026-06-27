@@ -16,7 +16,7 @@ import { getStorageProviderStatus } from '@/lib/storage';
 import { resolveAssetUrl } from '@/lib/storage/asset-url';
 import { getUser } from '@/lib/database/server-actions';
 import { getGenerationRequestSnapshot } from '@/lib/generation/display';
-import { InlineByokModelProviderLight } from '@/components/icons/inline-model';
+import { InlineRunwayLight } from '@/components/icons/inline-model';
 import {
   InlineAwsS3Storage,
   InlineCloudflareR2Storage,
@@ -363,10 +363,7 @@ function FavoriteModelValue({ model }: { model: string }) {
   return (
     <span className="inline-flex w-full max-w-full min-w-0 items-center gap-3">
       {hasModel ? (
-        <InlineByokModelProviderLight
-          className="h-5 w-7 shrink-0"
-          aria-hidden="true"
-        />
+        <InlineRunwayLight className="h-5 w-7 shrink-0" aria-hidden="true" />
       ) : null}
       <span className="block min-w-0 truncate">{model}</span>
     </span>
