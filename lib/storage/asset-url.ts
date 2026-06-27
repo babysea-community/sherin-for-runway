@@ -14,7 +14,7 @@ export type StoredGenerationLike = {
 
 /**
  * Resolve a viewable asset URL for a stored generation. Public URLs from
- * vercel-blob, cloudflare-r2, or aws-s3 custom domains are returned directly;
+ * aws-s3, cloudflare-r2, or vercel-blob custom domains are returned directly;
  * otherwise a short-lived signed URL is generated through the stored provider.
  */
 export async function resolveAssetUrl(
@@ -60,8 +60,8 @@ export async function resolveAssetUrl(
 function isStorageProviderId(value: string): value is StorageProviderId {
   return (
     value === 'supabase-storage' ||
-    value === 'vercel-blob' ||
+    value === 'aws-s3' ||
     value === 'cloudflare-r2' ||
-    value === 'aws-s3'
+    value === 'vercel-blob'
   );
 }

@@ -161,13 +161,23 @@ jobs:
 
           const storageProvider = (env.STORAGE_PROVIDER?.trim() || 'supabase-storage').toLowerCase();
 
-          if (!['supabase-storage', 'vercel-blob', 'cloudflare-r2', 'aws-s3'].includes(storageProvider)) {
-            console.error('::error::STORAGE_PROVIDER must be supabase-storage, vercel-blob, cloudflare-r2, or aws-s3.');
+          if (!['supabase-storage', 'aws-s3', 'cloudflare-r2', 'vercel-blob'].includes(storageProvider)) {
+            console.error('::error::STORAGE_PROVIDER must be supabase-storage, aws-s3, cloudflare-r2, or vercel-blob.');
             process.exit(1);
           }
 
-          if (storageProvider === 'vercel-blob') {
-            requireEnv(['BLOB_READ_WRITE_TOKEN'], storageProvider);
+          if (storageProvider === 'aws-s3') {
+            requireEnv(
+              [
+                'AWS_S3_REGION',
+                'AWS_S3_ACCESS_KEY_ID',
+                'AWS_S3_SECRET_ACCESS_KEY',
+                'AWS_S3_BUCKET_NAME',
+                'AWS_S3_ENDPOINT_URL',
+              ],
+              storageProvider,
+            );
+            validateUrl(env.AWS_S3_ENDPOINT_URL, 'AWS_S3_ENDPOINT_URL');
           }
 
           if (storageProvider === 'cloudflare-r2') {
@@ -186,18 +196,8 @@ jobs:
             validateUrl(env.CLOUDFLARE_R2_CUSTOM_DOMAIN_URL, 'CLOUDFLARE_R2_CUSTOM_DOMAIN_URL');
           }
 
-          if (storageProvider === 'aws-s3') {
-            requireEnv(
-              [
-                'AWS_S3_REGION',
-                'AWS_S3_ACCESS_KEY_ID',
-                'AWS_S3_SECRET_ACCESS_KEY',
-                'AWS_S3_BUCKET_NAME',
-                'AWS_S3_ENDPOINT_URL',
-              ],
-              storageProvider,
-            );
-            validateUrl(env.AWS_S3_ENDPOINT_URL, 'AWS_S3_ENDPOINT_URL');
+          if (storageProvider === 'vercel-blob') {
+            requireEnv(['BLOB_READ_WRITE_TOKEN'], storageProvider);
           }
 
           if (

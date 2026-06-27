@@ -1,8 +1,8 @@
 export type StorageProviderId =
   | 'supabase-storage'
-  | 'vercel-blob'
+  | 'aws-s3'
   | 'cloudflare-r2'
-  | 'aws-s3';
+  | 'vercel-blob';
 
 export type StoreInput = {
   /** Object key relative to the storage bucket. */

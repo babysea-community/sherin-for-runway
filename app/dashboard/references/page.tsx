@@ -382,12 +382,12 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
     };
   }
 
-  if (normalizedProvider === 'vercel-blob') {
+  if (normalizedProvider === 'aws-s3') {
     return {
       content: (
         <>
-          <InlineVercelBlob className="size-4 shrink-0" aria-hidden="true" />
-          <span>Vercel Blob{fallbackSuffix}</span>
+          <InlineAwsS3Storage className="size-4 shrink-0" aria-hidden="true" />
+          <span>AWS S3{fallbackSuffix}</span>
         </>
       ),
       key: provider,
@@ -409,12 +409,12 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
     };
   }
 
-  if (normalizedProvider === 'aws-s3') {
+  if (normalizedProvider === 'vercel-blob') {
     return {
       content: (
         <>
-          <InlineAwsS3Storage className="size-4 shrink-0" aria-hidden="true" />
-          <span>AWS S3{fallbackSuffix}</span>
+          <InlineVercelBlob className="size-4 shrink-0" aria-hidden="true" />
+          <span>Vercel Blob{fallbackSuffix}</span>
         </>
       ),
       key: provider,
@@ -504,16 +504,16 @@ function formatStorageProvider(provider: string) {
     return 'Supabase Storage';
   }
 
-  if (provider === 'vercel-blob') {
-    return 'Vercel Blob';
+  if (provider === 'aws-s3') {
+    return 'AWS S3';
   }
 
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
   }
 
-  if (provider === 'aws-s3') {
-    return 'AWS S3';
+  if (provider === 'vercel-blob') {
+    return 'Vercel Blob';
   }
 
   return provider;
@@ -546,11 +546,8 @@ function normalizeStorageProviderForSummary(provider: string | null) {
     return 'supabase-storage';
   }
 
-  if (
-    normalizedProvider === 'vercel-blob' ||
-    normalizedProvider === 'vercel blob'
-  ) {
-    return 'vercel-blob';
+  if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
+    return 'aws-s3';
   }
 
   if (
@@ -560,8 +557,11 @@ function normalizeStorageProviderForSummary(provider: string | null) {
     return 'cloudflare-r2';
   }
 
-  if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
-    return 'aws-s3';
+  if (
+    normalizedProvider === 'vercel-blob' ||
+    normalizedProvider === 'vercel blob'
+  ) {
+    return 'vercel-blob';
   }
 
   return normalizedProvider;

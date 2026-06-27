@@ -10,17 +10,17 @@ import type {
 } from './types';
 import { createSupabaseStorageProvider } from './supabase-storage/server-actions';
 import {
-  createVercelBlobProvider,
-  isVercelBlobConfigured,
-} from './vercel-blob/server-actions';
+  createAwsS3StorageProvider,
+  isAwsS3StorageConfigured,
+} from './aws-s3/server-actions';
 import {
   createCloudflareR2StorageProvider,
   isCloudflareR2StorageConfigured,
 } from './cloudflare-r2/server-actions';
 import {
-  createAwsS3StorageProvider,
-  isAwsS3StorageConfigured,
-} from './aws-s3/server-actions';
+  createVercelBlobProvider,
+  isVercelBlobConfigured,
+} from './vercel-blob/server-actions';
 
 export type {
   StorageProvider,
@@ -76,8 +76,7 @@ const ALLOWED_ASSET_CONTENT_TYPES = new Set([
 
 /**
  * Resolve the active storage provider. Honors STORAGE_PROVIDER first, then
- * falls back to a priority order: vercel-blob ➜ cloudflare-r2 ➜ aws-s3 ➜
- * supabase-storage.
+ * falls back to supabase-storage.
  */
 export function resolveStorageProvider(): StorageProvider {
   const configuredPreference = getOptionalEnv('STORAGE_PROVIDER');
@@ -85,24 +84,12 @@ export function resolveStorageProvider(): StorageProvider {
 
   if (configuredPreference && !preferred) {
     throw new Error(
-      'STORAGE_PROVIDER must be supabase-storage, vercel-blob, cloudflare-r2, or aws-s3.',
+      'STORAGE_PROVIDER must be supabase-storage, aws-s3, cloudflare-r2, or vercel-blob.',
     );
   }
 
   if (preferred) {
     return createProvider(preferred);
-  }
-
-  if (isVercelBlobConfigured()) {
-    return createVercelBlobProvider();
-  }
-
-  if (isCloudflareR2StorageConfigured()) {
-    return createCloudflareR2StorageProvider();
-  }
-
-  if (isAwsS3StorageConfigured()) {
-    return createAwsS3StorageProvider();
   }
 
   return createSupabaseStorageProvider();
@@ -129,9 +116,9 @@ export function getStorageProviderStatus() {
     active,
     availability: {
       'supabase-storage': true,
-      'vercel-blob': isVercelBlobConfigured(),
-      'cloudflare-r2': isCloudflareR2StorageConfigured(),
       'aws-s3': isAwsS3StorageConfigured(),
+      'cloudflare-r2': isCloudflareR2StorageConfigured(),
+      'vercel-blob': isVercelBlobConfigured(),
     },
   };
 }
@@ -558,12 +545,12 @@ function createProvider(id: StorageProviderId): StorageProvider {
   switch (id) {
     case 'supabase-storage':
       return createSupabaseStorageProvider();
-    case 'vercel-blob':
-      return createVercelBlobProvider();
-    case 'cloudflare-r2':
-      return createCloudflareR2StorageProvider();
     case 'aws-s3':
       return createAwsS3StorageProvider();
+    case 'cloudflare-r2':
+      return createCloudflareR2StorageProvider();
+    case 'vercel-blob':
+      return createVercelBlobProvider();
   }
 }
 
@@ -578,9 +565,9 @@ function normalizePreference(
 
   if (
     lower === 'supabase-storage' ||
-    lower === 'vercel-blob' ||
+    lower === 'aws-s3' ||
     lower === 'cloudflare-r2' ||
-    lower === 'aws-s3'
+    lower === 'vercel-blob'
   ) {
     return lower;
   }

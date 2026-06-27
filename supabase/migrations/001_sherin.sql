@@ -30,7 +30,7 @@ create table if not exists public.generations (
       provider_generation_id is null
       or char_length(provider_generation_id) between 1 and 255
     ),
-  storage_provider text not null check (storage_provider in ('supabase-storage', 'vercel-blob', 'cloudflare-r2', 'aws-s3')),
+  storage_provider text not null check (storage_provider in ('supabase-storage', 'aws-s3', 'cloudflare-r2', 'vercel-blob')),
   metadata jsonb not null default '{}'::jsonb,
   error text,
   storage_bytes bigint not null default 0 check (storage_bytes >= 0),

@@ -50,18 +50,18 @@ variables:
   BABYSEA_API_BASE_URL: https://api.us.babysea.ai
   STORAGE_PROVIDER: supabase-storage
   CUSTOM_USER_STORAGE_QUOTA_GB: '10'
-  BLOB_READ_WRITE_TOKEN: ci_blob_read_write_token
+  AWS_S3_REGION: ci_aws_s3_region
+  AWS_S3_ACCESS_KEY_ID: ci_aws_s3_access_key_id
+  AWS_S3_SECRET_ACCESS_KEY: ci_aws_s3_secret_access_key
+  AWS_S3_BUCKET_NAME: ci_aws_s3_bucket_name
+  AWS_S3_ENDPOINT_URL: https://example.s3.amazonaws.com
   CLOUDFLARE_R2_ACCOUNT_ID: example
   CLOUDFLARE_R2_ACCESS_KEY_ID: ci_cloudflare_r2_access_key_id
   CLOUDFLARE_R2_SECRET_ACCESS_KEY: ci_cloudflare_r2_secret_access_key
   CLOUDFLARE_R2_BUCKET_NAME: ci_cloudflare_r2_bucket_name
   CLOUDFLARE_R2_ENDPOINT_URL: https://example.r2.cloudflarestorage.com
   CLOUDFLARE_R2_CUSTOM_DOMAIN_URL: https://example.pub-token.r2.dev
-  AWS_S3_REGION: ci_aws_s3_region
-  AWS_S3_ACCESS_KEY_ID: ci_aws_s3_access_key_id
-  AWS_S3_SECRET_ACCESS_KEY: ci_aws_s3_secret_access_key
-  AWS_S3_BUCKET_NAME: ci_aws_s3_bucket_name
-  AWS_S3_ENDPOINT_URL: https://example.s3.amazonaws.com
+  BLOB_READ_WRITE_TOKEN: ci_blob_read_write_token
   CRON_SECRET: ci_cron_secret
   NEXT_PUBLIC_SENTRY_DSN: https://example.sentry.io
   NEXT_PUBLIC_SENTRY_ENVIRONMENT: ci_sentry_environment

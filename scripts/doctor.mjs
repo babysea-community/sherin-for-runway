@@ -9,9 +9,9 @@ const ENV_FILES = ['.env.local', '.env'];
 const INFERENCE_PROVIDERS = new Set(['runway', 'babysea']);
 const STORAGE_PROVIDERS = new Set([
   'supabase-storage',
-  'vercel-blob',
-  'cloudflare-r2',
   'aws-s3',
+  'cloudflare-r2',
+  'vercel-blob',
 ]);
 const SHERIN_REPOSITORY_URL =
   'https://github.com/babysea-community/sherin-for-runway';
@@ -61,6 +61,13 @@ if (preferredInference && !INFERENCE_PROVIDERS.has(preferredInference)) {
 
 const preferredStorage = optional('STORAGE_PROVIDER')?.toLowerCase();
 const storageRequirements = {
+  'aws-s3': [
+    'AWS_S3_REGION',
+    'AWS_S3_ACCESS_KEY_ID',
+    'AWS_S3_SECRET_ACCESS_KEY',
+    'AWS_S3_BUCKET_NAME',
+    'AWS_S3_ENDPOINT_URL',
+  ],
   'cloudflare-r2': [
     'CLOUDFLARE_R2_ACCOUNT_ID',
     'CLOUDFLARE_R2_ACCESS_KEY_ID',
@@ -69,24 +76,17 @@ const storageRequirements = {
     'CLOUDFLARE_R2_ENDPOINT_URL',
     'CLOUDFLARE_R2_CUSTOM_DOMAIN_URL',
   ],
-  'aws-s3': [
-    'AWS_S3_REGION',
-    'AWS_S3_ACCESS_KEY_ID',
-    'AWS_S3_SECRET_ACCESS_KEY',
-    'AWS_S3_BUCKET_NAME',
-    'AWS_S3_ENDPOINT_URL',
-  ],
 };
 const storageAvailability = {
-  'vercel-blob': Boolean(optional('BLOB_READ_WRITE_TOKEN')),
-  'cloudflare-r2': hasAll(storageRequirements['cloudflare-r2']),
-  'aws-s3': hasAll(storageRequirements['aws-s3']),
   'supabase-storage': true,
+  'aws-s3': hasAll(storageRequirements['aws-s3']),
+  'cloudflare-r2': hasAll(storageRequirements['cloudflare-r2']),
+  'vercel-blob': Boolean(optional('BLOB_READ_WRITE_TOKEN')),
 };
 
 if (preferredStorage && !STORAGE_PROVIDERS.has(preferredStorage)) {
   fail(
-    'STORAGE_PROVIDER must be supabase-storage, vercel-blob, cloudflare-r2, or aws-s3.',
+    'STORAGE_PROVIDER must be supabase-storage, aws-s3, cloudflare-r2, or vercel-blob.',
   );
 } else if (preferredStorage && !storageAvailability[preferredStorage]) {
   fail('Selected storage provider is missing required env values.');
@@ -94,12 +94,17 @@ if (preferredStorage && !STORAGE_PROVIDERS.has(preferredStorage)) {
   pass('Storage provider is configured.');
 }
 
+if (hasAny(storageRequirements['aws-s3'])) {
+  checkRequiredGroup('aws-s3', storageRequirements['aws-s3']);
+}
+
 if (hasAny(storageRequirements['cloudflare-r2'])) {
   checkRequiredGroup('cloudflare-r2', storageRequirements['cloudflare-r2']);
 }
 
-if (hasAny(storageRequirements['aws-s3'])) {
-  checkRequiredGroup('aws-s3', storageRequirements['aws-s3']);
+if (optional('AWS_S3_ENDPOINT_URL')) {
+  checkUrl('AWS_S3_ENDPOINT_URL');
+  checkAwsS3EndpointUrl('AWS_S3_ENDPOINT_URL');
 }
 
 if (optional('CLOUDFLARE_R2_ENDPOINT_URL')) {
@@ -112,11 +117,6 @@ if (optional('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL')) {
   checkUrl('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL');
   checkNoUrlCredentials('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL');
   checkR2PublicReadHost('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL');
-}
-
-if (optional('AWS_S3_ENDPOINT_URL')) {
-  checkUrl('AWS_S3_ENDPOINT_URL');
-  checkAwsS3EndpointUrl('AWS_S3_ENDPOINT_URL');
 }
 
 if (
@@ -439,9 +439,6 @@ function checkRequiredGroup(provider, names) {
 }
 
 function detectStorageProvider() {
-  if (storageAvailability['vercel-blob']) return 'vercel-blob';
-  if (storageAvailability['cloudflare-r2']) return 'cloudflare-r2';
-  if (storageAvailability['aws-s3']) return 'aws-s3';
   return 'supabase-storage';
 }
 
@@ -601,8 +598,23 @@ async function probeStorage() {
     return;
   }
 
-  if (provider === 'vercel-blob') {
-    await probeVercelBlobStorage(key, payload);
+  if (provider === 'aws-s3') {
+    const endpointConfig = awsS3EndpointConfig();
+
+    await probeS3CompatibleStorage(
+      {
+        accessKeyId: optional('AWS_S3_ACCESS_KEY_ID'),
+        bucket: optional('AWS_S3_BUCKET_NAME'),
+        endpoint: endpointConfig.clientEndpoint,
+        forcePathStyle: endpointConfig.forcePathStyle,
+        label: 'AWS S3',
+        publicBaseUrl: endpointConfig.publicBaseUrl,
+        region: optional('AWS_S3_REGION'),
+        secretAccessKey: optional('AWS_S3_SECRET_ACCESS_KEY'),
+      },
+      key,
+      payload,
+    );
   } else if (provider === 'cloudflare-r2') {
     await probeS3CompatibleStorage(
       {
@@ -618,22 +630,8 @@ async function probeStorage() {
       key,
       payload,
     );
-  } else if (provider === 'aws-s3') {
-    const endpointConfig = awsS3EndpointConfig();
-    await probeS3CompatibleStorage(
-      {
-        accessKeyId: optional('AWS_S3_ACCESS_KEY_ID'),
-        bucket: optional('AWS_S3_BUCKET_NAME'),
-        endpoint: endpointConfig?.clientEndpoint,
-        forcePathStyle: false,
-        label: 'AWS S3',
-        publicBaseUrl: endpointConfig?.publicBaseUrl,
-        region: optional('AWS_S3_REGION'),
-        secretAccessKey: optional('AWS_S3_SECRET_ACCESS_KEY'),
-      },
-      key,
-      payload,
-    );
+  } else if (provider === 'vercel-blob') {
+    await probeVercelBlobStorage(key, payload);
   }
 
   await probeSupabaseStorage(
@@ -935,10 +933,6 @@ function resolveAwsS3EndpointConfig({ bucket, endpointUrl, region }) {
   if (url.username || url.password) {
     throw new Error('AWS_S3_ENDPOINT_URL must not include credentials.');
   }
-
-  url.pathname = url.pathname.replace(/\/+$/, '');
-  url.search = '';
-  url.hash = '';
 
   const hostname = url.hostname.toLowerCase();
   const bucketHostSuffix = awsS3BucketHostSuffix(hostname, bucket);

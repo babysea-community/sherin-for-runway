@@ -200,16 +200,16 @@ function formatStorageProvider(provider: string) {
     return 'Supabase Storage';
   }
 
-  if (provider === 'vercel-blob') {
-    return 'Vercel Blob';
+  if (provider === 'aws-s3') {
+    return 'AWS S3';
   }
 
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
   }
 
-  if (provider === 'aws-s3') {
-    return 'AWS S3';
+  if (provider === 'vercel-blob') {
+    return 'Vercel Blob';
   }
 
   return provider;
