@@ -13,6 +13,7 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 ### Fixed
 
 - Ignore stale form values that are outside the active Runway model schema.
+- Omit empty video input values from BYOK submissions so image-only Runway model paths do not receive unsupported schema fields.
 
 ## [0.1.0] - 2026-06-27 - INITIAL RELEASED
 

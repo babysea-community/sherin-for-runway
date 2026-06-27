@@ -220,15 +220,18 @@ export async function generateImage(formData: FormData) {
         ),
       },
     });
+    const preflightInputVideoFiles = inputFilesForPreflight(
+      inputVideoFileSource,
+      readInputVideoFileUrls(formData),
+      inputVideoFileUploads,
+    );
     const byokPreflightRequest = {
       ...preflightRequest,
       byokParams: {
         ...preflightRequest.byokParams,
-        generation_input_video_file: inputFilesForPreflight(
-          inputVideoFileSource,
-          readInputVideoFileUrls(formData),
-          inputVideoFileUploads,
-        ),
+        ...(preflightInputVideoFiles.length > 0
+          ? { generation_input_video_file: preflightInputVideoFiles }
+          : {}),
       },
     };
     const prepared = await prepareByokRequestOrRedirect(
@@ -278,7 +281,9 @@ export async function generateImage(formData: FormData) {
       ...prepared.request,
       byokParams: {
         ...prepared.request.byokParams,
-        generation_input_video_file: resolvedInputVideoFiles.urls,
+        ...(resolvedInputVideoFiles.urls.length > 0
+          ? { generation_input_video_file: resolvedInputVideoFiles.urls }
+          : {}),
       },
       inputFiles: resolvedInputFiles.urls,
     });
