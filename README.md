@@ -134,7 +134,7 @@ BabySea model schemas are published at [babysea.ai/model-schema](https://babysea
 
 Use [`.env.example`](.env.example) as the source of truth for storage provider, quota, worker, and monitoring configuration.
 
-Supabase Storage is the default and fallback storage path. Cloudflare R2, AWS S3, and Vercel Blob are available when you want generated media in your own bucket or blob store.
+Supabase Storage is the default and fallback storage path. AWS S3, Cloudflare R2, and Vercel Blob are available when you want generated media in your own bucket or blob store.
 
 ## Supported models
 
@@ -172,19 +172,19 @@ Supported model names and provider fields are registered in [`lib/model-family.t
 
 ### DigitalOcean
 
-[`.do/deploy.template.yaml`](.do/deploy.template.yaml) defines the DigitalOcean App Platform service, build command, start command, and environment prompts. Set `NEXT_PUBLIC_SITE_URL` to the DigitalOcean or custom domain, configure Supabase auth callback URLs, and prefer Supabase Storage, Cloudflare R2, or AWS S3 for generated media.
+[`.do/deploy.template.yaml`](.do/deploy.template.yaml) defines the DigitalOcean App Platform service, build command, start command, and environment prompts. Set `NEXT_PUBLIC_SITE_URL` to the DigitalOcean or custom domain, configure Supabase auth callback URLs, and prefer Supabase Storage, AWS S3, or Cloudflare R2 for generated media.
 
 ### Netlify
 
-[`netlify.toml`](netlify.toml) builds with `pnpm build` and the Next.js plugin. Prefer Supabase Storage, Cloudflare R2, or AWS S3 on Netlify; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
+[`netlify.toml`](netlify.toml) builds with `pnpm build` and the Next.js plugin. Prefer Supabase Storage, AWS S3, or Cloudflare R2 on Netlify; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
 
 ### Railway
 
-Use the Deploy on Railway button above to start from the published Sherin template, or create a new Railway project from the public repository. Add every runtime variable from [`.env.example`](.env.example), and set `NEXT_PUBLIC_SITE_URL` to the Railway or custom domain. Prefer Supabase Storage, Cloudflare R2, or AWS S3 on Railway; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
+Use the Deploy on Railway button above to start from the published Sherin template, or create a new Railway project from the public repository. Add every runtime variable from [`.env.example`](.env.example), and set `NEXT_PUBLIC_SITE_URL` to the Railway or custom domain. Prefer Supabase Storage, AWS S3, or Cloudflare R2 on Railway; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
 
 ### Render
 
-[`render.yaml`](render.yaml) builds with `pnpm build` and runs `pnpm start -- -p $PORT`. Prefer Supabase Storage, Cloudflare R2, or AWS S3 on Render; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
+[`render.yaml`](render.yaml) builds with `pnpm build` and runs `pnpm start -- -p $PORT`. Prefer Supabase Storage, AWS S3, or Cloudflare R2 on Render; if you intentionally use Vercel Blob outside Vercel, validate it with `STORAGE_SMOKE_TEST=1 pnpm run doctor`.
 
 ### Vercel
 

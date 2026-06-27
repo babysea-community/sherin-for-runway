@@ -119,10 +119,7 @@ if (optional('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL')) {
   checkR2PublicReadHost('CLOUDFLARE_R2_CUSTOM_DOMAIN_URL');
 }
 
-if (
-  preferredStorage === 'vercel-blob' ||
-  (!preferredStorage && storageAvailability['vercel-blob'])
-) {
+if (preferredStorage === 'vercel-blob') {
   pass('vercel-blob storage selected; use Vercel for hosting.');
 }
 
@@ -599,7 +596,21 @@ async function probeStorage() {
   }
 
   if (provider === 'aws-s3') {
-    const endpointConfig = awsS3EndpointConfig();
+    let endpointConfig;
+
+    try {
+      endpointConfig = awsS3EndpointConfig();
+    } catch (error) {
+      fail(
+        error instanceof Error ? error.message : 'AWS S3 endpoint is invalid.',
+      );
+      return;
+    }
+
+    if (!endpointConfig) {
+      fail('AWS S3 smoke test requires AWS_S3_ENDPOINT_URL.');
+      return;
+    }
 
     await probeS3CompatibleStorage(
       {

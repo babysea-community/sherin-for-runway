@@ -31,7 +31,7 @@ Use this guide for changes inside the Sherin starter, especially owner auth, inf
 | `app/api/generations/process/route.ts` | Owner/cron generation recovery endpoint                                      |
 | `lib/auth/owner.ts`                    | Owner email authorization                                                    |
 | `lib/inference`                        | Runway and BabySea inference adapters                                        |
-| `lib/storage`                          | Supabase Storage, Vercel Blob, Cloudflare R2, and AWS S3 storage adapters    |
+| `lib/storage`                          | Supabase Storage, AWS S3, Cloudflare R2, and Vercel Blob storage adapters    |
 | `lib/security/csp.ts`                  | CSP and remote image/script allowlists                                       |
 | `supabase/migrations`                  | Owner workspace schema, storage metadata, references, and generation records |
 | `scripts/doctor.mjs`                   | Deployment wiring validator                                                  |
