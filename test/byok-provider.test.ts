@@ -340,6 +340,42 @@ describe('Runway provider', () => {
     );
   });
 
+  it('ignores stale fields outside the selected Semantic Lady schema', async () => {
+    const formData = new FormData();
+
+    formData.set('generation_duration', '7');
+    formData.set('generation_body_control', 'true');
+    formData.set('generation_expression_intensity', '4');
+    formData.set(
+      'generation_input_video_file',
+      'https://example.com/input.mp4',
+    );
+
+    const prepared = await prepareRequest(
+      createRunwayProvider(),
+      formData,
+      createRequest({
+        byokParams: {
+          generation_input_video_file: ['https://example.com/uploaded.mp4'],
+        },
+        model: 'runway/gen-4-image',
+      }),
+    );
+
+    expect(prepared.request.byokParams).not.toHaveProperty(
+      'generation_duration',
+    );
+    expect(prepared.request.byokParams).not.toHaveProperty(
+      'generation_body_control',
+    );
+    expect(prepared.request.byokParams).not.toHaveProperty(
+      'generation_expression_intensity',
+    );
+    expect(prepared.request.byokParams).not.toHaveProperty(
+      'generation_input_video_file',
+    );
+  });
+
   it('resumes polling without resubmitting direct provider work', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValueOnce(

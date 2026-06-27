@@ -14,6 +14,7 @@ import {
   RatioField,
   Select,
   getFieldDescription,
+  getFieldLabel,
 } from './form-controls';
 
 type ByokFormFieldsProps = {
@@ -53,7 +54,7 @@ export function ByokFormFields({
     .filter((field) => !isSpecialField(field.name))
     .map((field) => ({
       key: field.name,
-      label: fieldLabel(field.name),
+      label: getFieldLabel(field.name),
       node: <SchemaField field={field} />,
     }))
     .sort((left, right) => left.label.localeCompare(right.label));
@@ -72,8 +73,8 @@ export function ByokFormFields({
         {ratioField ? (
           <RatioField
             defaultRatio={fieldStringDefault(ratioField) ?? defaultRatio}
-            description={ratioField.description}
-            label={fieldLabel(ratioField.name)}
+            description={fieldDescription(ratioField)}
+            label={getFieldLabel(ratioField.name)}
             ratioOptions={fieldStringEnum(ratioField, ratioOptions)}
           />
         ) : null}
@@ -83,7 +84,7 @@ export function ByokFormFields({
             defaultOutputFormat={
               fieldStringDefault(outputFormatField) ?? defaultOutputFormat
             }
-            description={outputFormatField.description}
+            description={fieldDescription(outputFormatField)}
             outputFormatOptions={fieldStringEnum(
               outputFormatField,
               outputFormatOptions,
@@ -131,8 +132,27 @@ export function ByokFormFields({
 }
 
 function SchemaField({ field }: { field: SemanticLadyField }) {
-  const label = fieldLabel(field.name);
-  const description = field.description ?? getFieldDescription(field.name);
+  const label = getFieldLabel(field.name);
+  const description = fieldDescription(field);
+
+  if (field.name === 'generation_duration' && field.type === 'integer') {
+    const options = durationOptions(field);
+
+    if (options.length > 0) {
+      return (
+        <Field label={label} description={description}>
+          <Select
+            name={field.name}
+            defaultValue={durationDefaultValue(field)}
+            options={options}
+            placeholder={
+              field.required ? 'Select duration' : 'Provider default'
+            }
+          />
+        </Field>
+      );
+    }
+  }
 
   if (field.type === 'boolean') {
     return (
@@ -206,6 +226,16 @@ function fieldByName(schema: readonly SemanticLadyField[], name: string) {
   return schema.find((field) => field.name === name);
 }
 
+function fieldDescription(field: SemanticLadyField) {
+  return (
+    getFieldDescription(fieldDescriptionKey(field.name)) ?? field.description
+  );
+}
+
+function fieldDescriptionKey(name: string) {
+  return name === 'generation_aspect_ratio' ? 'generation_ratio' : name;
+}
+
 function fieldStringEnum(
   field: SemanticLadyField,
   fallback: readonly string[],
@@ -229,35 +259,28 @@ function fieldBooleanDefault(field: SemanticLadyField) {
   return typeof field.default === 'boolean' ? String(field.default) : undefined;
 }
 
-function fieldLabel(name: string) {
-  const labels: Record<string, string> = {
-    generation_aspect_ratio: 'Aspect ratio',
-    generation_body_control: 'Body control',
-    generation_duration: 'Duration',
-    generation_expression_intensity: 'Expression intensity',
-    generation_guidance: 'Guidance scale',
-    generation_height: 'Height',
-    generation_image_prompt_strength: 'Image prompt strength',
-    generation_input_image_file: 'Input image',
-    generation_input_video_file: 'Input video',
-    generation_moderation: 'Moderation',
-    generation_output_format: 'Output format',
-    generation_prompt: 'Prompt',
-    generation_prompt_extend: 'Prompt extension',
-    generation_raw: 'Raw mode',
-    generation_reference_tag: 'Reference tag',
-    generation_seed: 'Seed',
-    generation_steps: 'Inference steps',
-    generation_width: 'Width',
-  };
+function durationOptions(field: SemanticLadyField) {
+  const min = typeof field.min === 'number' ? field.min : 2;
+  const max = typeof field.max === 'number' ? field.max : 10;
 
-  return (
-    labels[name] ??
-    name
-      .replace(/^generation_/, '')
-      .split('_')
-      .filter(Boolean)
-      .map((part) => part[0]?.toUpperCase() + part.slice(1))
-      .join(' ')
-  );
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min > max) {
+    return [];
+  }
+
+  return Array.from({ length: max - min + 1 }, (_, index) => {
+    const value = String(min + index);
+
+    return { value, label: `${value} seconds` };
+  });
+}
+
+function durationDefaultValue(field: SemanticLadyField) {
+  if (!field.required) {
+    return undefined;
+  }
+
+  const min = typeof field.min === 'number' ? field.min : 2;
+  const max = typeof field.max === 'number' ? field.max : 10;
+
+  return String(Math.min(Math.max(5, min), max));
 }

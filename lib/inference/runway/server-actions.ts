@@ -62,6 +62,7 @@ export function createRunwayProvider(): InferenceProvider {
       const params = mergeRunwayPreflightParams(
         readRunwayParamsFromFormData(formData, modelConfig),
         request.byokParams,
+        modelConfig,
       );
       const preparedRequest = {
         ...request,
@@ -190,51 +191,72 @@ function readRunwayParamsFromFormData(
   config: RunwayModelConfig,
 ): InferenceRequest['byokParams'] {
   const params: InferenceRequest['byokParams'] = {};
-  const duration = readOptionalNumber(formData.get('generation_duration'));
 
-  if (duration !== undefined) {
-    params.generation_duration = duration;
-  } else if (config.duration?.required) {
-    params.generation_duration = config.duration.defaultValue;
+  if (hasRunwaySchemaField(config, 'generation_duration')) {
+    const duration = readOptionalNumber(formData.get('generation_duration'));
+
+    if (duration !== undefined) {
+      params.generation_duration = duration;
+    } else if (config.duration?.required) {
+      params.generation_duration = config.duration.defaultValue;
+    }
   }
 
-  const moderation = readOptionalBoolean(formData.get('generation_moderation'));
-  if (moderation !== undefined) {
-    params.generation_moderation = moderation;
+  if (hasRunwaySchemaField(config, 'generation_moderation')) {
+    const moderation = readOptionalBoolean(
+      formData.get('generation_moderation'),
+    );
+
+    if (moderation !== undefined) {
+      params.generation_moderation = moderation;
+    }
   }
 
-  const bodyControl = readOptionalBoolean(
-    formData.get('generation_body_control'),
-  );
-  if (bodyControl !== undefined) {
-    params.generation_body_control = bodyControl;
+  if (hasRunwaySchemaField(config, 'generation_body_control')) {
+    const bodyControl = readOptionalBoolean(
+      formData.get('generation_body_control'),
+    );
+
+    if (bodyControl !== undefined) {
+      params.generation_body_control = bodyControl;
+    }
   }
 
-  assignNumberParam(
-    params,
-    'generation_expression_intensity',
-    formData.get('generation_expression_intensity'),
-  );
-
-  const referenceTag = readOptionalString(
-    formData.get('generation_reference_tag'),
-  );
-  if (referenceTag !== undefined) {
-    params.generation_reference_tag = referenceTag;
+  if (hasRunwaySchemaField(config, 'generation_expression_intensity')) {
+    assignNumberParam(
+      params,
+      'generation_expression_intensity',
+      formData.get('generation_expression_intensity'),
+    );
   }
 
-  assignNumberParam(
-    params,
-    'generation_seed',
-    firstFormValue(formData, ['generation_seed', 'byok_seed']),
-  );
+  if (hasRunwaySchemaField(config, 'generation_reference_tag')) {
+    const referenceTag = readOptionalString(
+      formData.get('generation_reference_tag'),
+    );
 
-  const videoInputFiles =
-    formData.get('generation_input_video_file_source') === 'upload'
-      ? []
-      : parseInputUrls(formData.get('generation_input_video_file'));
-  if (videoInputFiles.length > 0) {
-    params.generation_input_video_file = videoInputFiles;
+    if (referenceTag !== undefined) {
+      params.generation_reference_tag = referenceTag;
+    }
+  }
+
+  if (hasRunwaySchemaField(config, 'generation_seed')) {
+    assignNumberParam(
+      params,
+      'generation_seed',
+      firstFormValue(formData, ['generation_seed', 'byok_seed']),
+    );
+  }
+
+  if (hasRunwaySchemaField(config, 'generation_input_video_file')) {
+    const videoInputFiles =
+      formData.get('generation_input_video_file_source') === 'upload'
+        ? []
+        : parseInputUrls(formData.get('generation_input_video_file'));
+
+    if (videoInputFiles.length > 0) {
+      params.generation_input_video_file = videoInputFiles;
+    }
   }
 
   return params;
@@ -243,7 +265,14 @@ function readRunwayParamsFromFormData(
 function mergeRunwayPreflightParams(
   formParams: InferenceRequest['byokParams'],
   requestParams: InferenceRequest['byokParams'],
+  config: RunwayModelConfig,
 ) {
+  if (!hasRunwaySchemaField(config, 'generation_input_video_file')) {
+    const { generation_input_video_file, ...params } = formParams;
+
+    return params;
+  }
+
   const formVideoInputFiles = collectStringValues(
     formParams.generation_input_video_file,
   );
@@ -272,18 +301,36 @@ function resolveRunwayParams(
   config: RunwayModelConfig,
 ): RunwayRequestParams {
   return {
-    bodyControl: readOptionalBoolean(params.generation_body_control),
-    duration:
-      readOptionalNumber(params.generation_duration) ??
-      (config.duration?.required ? config.duration.defaultValue : undefined),
-    expressionIntensity: readOptionalNumber(
-      params.generation_expression_intensity,
-    ),
-    moderation: readOptionalBoolean(params.generation_moderation),
-    referenceTag: readOptionalString(params.generation_reference_tag),
-    seed: readOptionalNumber(params.generation_seed),
-    videoInputFiles: collectStringValues(params.generation_input_video_file),
+    bodyControl: hasRunwaySchemaField(config, 'generation_body_control')
+      ? readOptionalBoolean(params.generation_body_control)
+      : undefined,
+    duration: hasRunwaySchemaField(config, 'generation_duration')
+      ? (readOptionalNumber(params.generation_duration) ??
+        (config.duration?.required ? config.duration.defaultValue : undefined))
+      : undefined,
+    expressionIntensity: hasRunwaySchemaField(
+      config,
+      'generation_expression_intensity',
+    )
+      ? readOptionalNumber(params.generation_expression_intensity)
+      : undefined,
+    moderation: hasRunwaySchemaField(config, 'generation_moderation')
+      ? readOptionalBoolean(params.generation_moderation)
+      : undefined,
+    referenceTag: hasRunwaySchemaField(config, 'generation_reference_tag')
+      ? readOptionalString(params.generation_reference_tag)
+      : undefined,
+    seed: hasRunwaySchemaField(config, 'generation_seed')
+      ? readOptionalNumber(params.generation_seed)
+      : undefined,
+    videoInputFiles: hasRunwaySchemaField(config, 'generation_input_video_file')
+      ? collectStringValues(params.generation_input_video_file)
+      : [],
   };
+}
+
+function hasRunwaySchemaField(config: RunwayModelConfig, name: string) {
+  return config.schema.some((field) => field.name === name);
 }
 
 function endpointForRunwayRequest(

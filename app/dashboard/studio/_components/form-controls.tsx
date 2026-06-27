@@ -508,6 +508,15 @@ export function getFieldDescription(field: string) {
   return fieldDescriptions[field];
 }
 
+export function getFieldLabel(field: string) {
+  return field
+    .replace(/^generation_/, '')
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function punctuateDescription(description: string) {
   return /[.!?]$/.test(description) ? description : `${description}.`;
 }

@@ -17,6 +17,7 @@ import {
   ResolutionField,
   Select,
   getFieldDescription,
+  getFieldLabel,
 } from './form-controls';
 
 type BabySeaFormFieldsProps = {
@@ -54,7 +55,7 @@ export function BabySeaFormFields({
 }: BabySeaFormFieldsProps) {
   const schemaFields: ExtraField[] = specificSchema.map((field) => ({
     key: field,
-    label: schemaFieldLabel(field),
+    label: getFieldLabel(field),
     node: <BabySeaSpecificField key={field} field={field} />,
   }));
 
@@ -135,7 +136,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
   if (field.includes('enhance_prompt')) {
     return (
       <Field
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         description={getFieldDescription(field)}
       >
         <Select
@@ -153,7 +154,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
   if (field.includes('moderation')) {
     return (
       <Field
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         description={getFieldDescription(field)}
       >
         <Select
@@ -173,7 +174,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
       <NumberField
         defaultValue={DEFAULT_GENERATION_OUTPUT_QUALITY}
         description={getFieldDescription(field)}
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         name={name}
         min={0}
         max={100}
@@ -186,7 +187,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
       <NumberField
         defaultValue={DEFAULT_GENERATION_GUIDANCE_SCALE}
         description={getFieldDescription(field)}
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         name={name}
         min={0}
         max={20}
@@ -200,7 +201,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
       <NumberField
         defaultValue={DEFAULT_GENERATION_NUM_INFERENCE_STEPS}
         description={getFieldDescription(field)}
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         name={name}
         min={1}
         max={100}
@@ -212,7 +213,7 @@ function BabySeaSpecificField({ field }: { field: string }) {
     return (
       <NumberField
         description={getFieldDescription(field)}
-        label={schemaFieldLabel(field)}
+        label={getFieldLabel(field)}
         name={name}
         min={0}
         max={2_147_483_647}
@@ -222,32 +223,10 @@ function BabySeaSpecificField({ field }: { field: string }) {
 
   return (
     <Field
-      label={schemaFieldLabel(field)}
+      label={getFieldLabel(field)}
       description={getFieldDescription(field)}
     >
       <Input name={name} placeholder="Optional" />
     </Field>
   );
-}
-
-function schemaFieldLabel(field: string) {
-  const labels: Record<string, string> = {
-    generation_enhance_prompt: 'Enhance prompt',
-    generation_guidance_scale: 'Guidance scale',
-    generation_moderation: 'Moderation',
-    generation_num_inference_steps: 'Inference steps',
-    generation_output_quality: 'Output quality',
-    generation_seed: 'Seed',
-  };
-
-  if (labels[field]) {
-    return labels[field];
-  }
-
-  return field
-    .replace(/^generation_/, '')
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ');
 }
