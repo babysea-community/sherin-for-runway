@@ -9,6 +9,7 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 - Standardize Runway BYOK form rendering around Semantic Lady schema fields.
 - Separate image and video input handling for Runway models while keeping shared UI media/file wording generic.
 - Render Runway duration as a bounded select control and use local field descriptions for Studio form help text.
+- Order Studio model dropdowns by image models first, then video models, with alphabetical sorting inside each group.
 
 ### Fixed
 
