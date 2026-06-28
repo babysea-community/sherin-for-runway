@@ -59,6 +59,7 @@ const INPUT_FILE_SOURCE_FIELD = 'generation_input_file_source';
 const INPUT_FILE_UPLOAD_FIELD = 'generation_input_file_upload';
 const INPUT_VIDEO_FILE_SOURCE_FIELD = 'generation_input_video_file_source';
 const INPUT_VIDEO_FILE_UPLOAD_FIELD = 'generation_input_video_file_upload';
+const STUDIO_ERROR_LOG_PREFIX = '[sherin:studio:error]';
 
 export async function generateImage(formData: FormData) {
   const { user } = await getUser();
@@ -79,8 +80,12 @@ export async function generateImage(formData: FormData) {
   let provider;
   try {
     provider = resolveInferenceProvider();
-  } catch {
-    redirect('/dashboard/studio?error=inference_unconfigured');
+  } catch (error) {
+    logStudioError('SHERIN_INFERENCE_PROVIDER_RESOLVE_FAILED', error);
+    redirectStudioError(
+      'inference_unconfigured',
+      'SHERIN_INFERENCE_PROVIDER_RESOLVE_FAILED',
+    );
   }
 
   const parsed = GenerateFormSchema.safeParse({
@@ -101,7 +106,19 @@ export async function generateImage(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect('/dashboard/studio?error=invalid_input');
+    logStudioError('SHERIN_FORM_PARSE_FAILED', parsed.error, {
+      imageUploadCount: inputFileUploads.length,
+      inputFileSource,
+      inputVideoFileSource,
+      issues: parsed.error.issues.map((issue) => ({
+        code: issue.code,
+        message: issue.message,
+        path: issue.path.join('.'),
+      })),
+      providerId: provider.id,
+      videoUploadCount: inputVideoFileUploads.length,
+    });
+    redirectStudioError('invalid_input', 'SHERIN_FORM_PARSE_FAILED');
   }
 
   const admin = createSupabaseAdminClient();
@@ -185,8 +202,15 @@ export async function generateImage(formData: FormData) {
         formData,
         schema.specificSchema,
       );
-    } catch {
-      redirect('/dashboard/studio?error=invalid_input');
+    } catch (error) {
+      logStudioError('SHERIN_BABYSEA_SPECIFIC_PARAMS_PARSE_FAILED', error, {
+        model: parsed.data.model,
+        providerId: provider.id,
+      });
+      redirectStudioError(
+        'invalid_input',
+        'SHERIN_BABYSEA_SPECIFIC_PARAMS_PARSE_FAILED',
+      );
     }
 
     const resolvedInputFiles = await resolveGenerationInputFilesOrRedirect({
@@ -195,6 +219,8 @@ export async function generateImage(formData: FormData) {
       maxFiles: schema.inputFile
         ? getBabySeaInputFileLimit(parsed.data.model)
         : 0,
+      model: parsed.data.model,
+      providerId: provider.id,
       source: inputFileSource,
       uploadFiles: inputFileUploads,
       urls: parsed.data.generation_input_file,
@@ -251,6 +277,8 @@ export async function generateImage(formData: FormData) {
         admin,
         generationId,
         maxFiles: prepared.inputImageLimit,
+        model: parsed.data.model,
+        providerId: provider.id,
         source: inputFileSource,
         uploadFiles: inputFileUploads,
         urls: parsed.data.generation_input_file,
@@ -262,6 +290,8 @@ export async function generateImage(formData: FormData) {
           admin,
           generationId,
           maxFiles: prepared.inputVideoLimit ?? 0,
+          model: parsed.data.model,
+          providerId: provider.id,
           source: inputVideoFileSource,
           uploadFiles: inputVideoFileUploads,
           urls: readInputVideoFileUrls(formData),
@@ -729,8 +759,18 @@ async function prepareByokRequestOrRedirect(
       ? await provider.prepareRequest({ formData, request })
       : { inputImageLimit: request.inputFiles.length, request };
   } catch (error) {
-    console.error('Could not prepare BYOK generation input', error);
-    redirect('/dashboard/studio?error=invalid_input');
+    logStudioError('SHERIN_BYOK_PREPARE_FAILED', error, {
+      byokParamKeys: Object.keys(request.byokParams).sort(),
+      inputImageCount: request.inputFiles.length,
+      inputVideoCount: countParamValues(
+        request.byokParams.generation_input_video_file,
+      ),
+      model: request.model,
+      outputFormat: request.outputFormat,
+      providerId: provider.id,
+      ratio: request.ratio,
+    });
+    redirectStudioError('invalid_input', 'SHERIN_BYOK_PREPARE_FAILED');
   }
 }
 
@@ -785,6 +825,8 @@ async function resolveGenerationInputFilesOrRedirect(input: {
   admin: SupabaseAdminClient;
   generationId: string;
   maxFiles: number;
+  model: SherinModelId;
+  providerId: string;
   source: InputFileSource;
   uploadFiles: File[];
   urls: string[];
@@ -793,12 +835,29 @@ async function resolveGenerationInputFilesOrRedirect(input: {
   try {
     return await resolveGenerationInputFiles(input);
   } catch (error) {
+    logStudioError('SHERIN_INPUT_IMAGE_RESOLVE_FAILED', error, {
+      feedback:
+        error instanceof InvalidInputFileUploadError
+          ? error.feedback
+          : 'input_upload_failed',
+      generationId: input.generationId,
+      maxFiles: input.maxFiles,
+      mediaKind: 'image',
+      model: input.model,
+      providerId: input.providerId,
+      source: input.source,
+      uploadCount: input.uploadFiles.length,
+      urlCount: input.urls.length,
+    });
+
     if (error instanceof InvalidInputFileUploadError) {
-      redirect(`/dashboard/studio?error=${error.feedback}`);
+      redirectStudioError(error.feedback, 'SHERIN_INPUT_IMAGE_RESOLVE_FAILED');
     }
 
-    console.error('Could not upload input images to Supabase Storage', error);
-    redirect('/dashboard/studio?error=input_upload_failed');
+    redirectStudioError(
+      'input_upload_failed',
+      'SHERIN_INPUT_IMAGE_RESOLVE_FAILED',
+    );
   }
 }
 
@@ -887,6 +946,8 @@ async function resolveGenerationInputVideoFilesOrRedirect(input: {
   admin: SupabaseAdminClient;
   generationId: string;
   maxFiles: number;
+  model: SherinModelId;
+  providerId: string;
   source: InputFileSource;
   uploadFiles: File[];
   urls: string[];
@@ -895,13 +956,113 @@ async function resolveGenerationInputVideoFilesOrRedirect(input: {
   try {
     return await resolveGenerationInputVideoFiles(input);
   } catch (error) {
+    logStudioError('SHERIN_INPUT_VIDEO_RESOLVE_FAILED', error, {
+      feedback:
+        error instanceof InvalidInputFileUploadError
+          ? error.feedback
+          : 'input_upload_failed',
+      generationId: input.generationId,
+      maxFiles: input.maxFiles,
+      mediaKind: 'video',
+      model: input.model,
+      providerId: input.providerId,
+      source: input.source,
+      uploadCount: input.uploadFiles.length,
+      urlCount: input.urls.length,
+    });
+
     if (error instanceof InvalidInputFileUploadError) {
-      redirect(`/dashboard/studio?error=${error.feedback}`);
+      redirectStudioError(error.feedback, 'SHERIN_INPUT_VIDEO_RESOLVE_FAILED');
     }
 
-    console.error('Could not upload input videos to Supabase Storage', error);
-    redirect('/dashboard/studio?error=input_upload_failed');
+    redirectStudioError(
+      'input_upload_failed',
+      'SHERIN_INPUT_VIDEO_RESOLVE_FAILED',
+    );
   }
+}
+
+function logStudioError(
+  code: string,
+  error: unknown,
+  context: Record<string, unknown> = {},
+) {
+  console.error(STUDIO_ERROR_LOG_PREFIX, {
+    code,
+    ...context,
+    error: errorDetails(error),
+  });
+}
+
+function redirectStudioError(error: string, _code: string): never {
+  redirect(`/dashboard/studio?error=${error}`);
+}
+
+function errorDetails(error: unknown) {
+  if (error instanceof InvalidInputFileUploadError) {
+    return {
+      cause: errorCauseDetails(error.cause),
+      feedback: error.feedback,
+      message: error.message,
+      name: error.name,
+    };
+  }
+
+  if (error instanceof Error) {
+    const details = error as Error & {
+      cause?: unknown;
+      digest?: unknown;
+      isTransient?: unknown;
+      statusCode?: unknown;
+    };
+
+    return {
+      cause: errorCauseDetails(details.cause),
+      digest: typeof details.digest === 'string' ? details.digest : undefined,
+      isTransient:
+        typeof details.isTransient === 'boolean'
+          ? details.isTransient
+          : undefined,
+      message: details.message,
+      name: details.name,
+      statusCode:
+        typeof details.statusCode === 'number' ? details.statusCode : undefined,
+    };
+  }
+
+  return { message: String(error) };
+}
+
+function errorCauseDetails(cause: unknown) {
+  if (!cause || typeof cause !== 'object') {
+    return undefined;
+  }
+
+  const details = cause as Error & {
+    code?: unknown;
+    errno?: unknown;
+    syscall?: unknown;
+  };
+
+  return {
+    code: typeof details.code === 'string' ? details.code : undefined,
+    errno: typeof details.errno === 'number' ? details.errno : undefined,
+    message: typeof details.message === 'string' ? details.message : undefined,
+    name: typeof details.name === 'string' ? details.name : undefined,
+    syscall: typeof details.syscall === 'string' ? details.syscall : undefined,
+  };
+}
+
+function countParamValues(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.length;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return 1;
+  }
+
+  return 0;
 }
 
 async function resolveGenerationInputVideoFiles(input: {

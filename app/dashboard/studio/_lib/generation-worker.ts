@@ -13,11 +13,7 @@ import {
   BABYSEA_IDEMPOTENCY_IN_PROGRESS_CODE,
   classifyInferenceError,
 } from '@/lib/inference/errors';
-import {
-  getStorageProviderStatus,
-  persistRemoteAsset,
-  removeStoredAssets,
-} from '@/lib/storage';
+import { getStorageProviderStatus, persistRemoteAsset } from '@/lib/storage';
 import { createSupabaseAdminClient } from '@/lib/database/admin';
 import { errorMessage } from '@/lib/utils';
 
@@ -25,13 +21,10 @@ import {
   mergeGenerationMetadata,
   readQueuedGenerationInputFileAssets,
   readQueuedGenerationJob,
-  readQueuedGenerationInputFileUploadPaths,
-  retainedStorageBytesAfterInputCleanup,
   type QueuedGenerationJob,
   type GenerationInput,
 } from './generation-job';
 import {
-  cleanupInputFileUploads,
   createInputFileAssetUrls,
   createSignedInputFileUrls,
 } from './input-file-uploads';
@@ -494,16 +487,6 @@ async function processClaimedGeneration(
         storageProvider: storedAsset.providerId,
       });
 
-      if (
-        await cleanupQueuedGenerationInputFiles(admin, claimed.row.user_id, job)
-      ) {
-        await updateGenerationAfterInputCleanup(
-          admin,
-          claimed.row.id,
-          retainedStorageBytesAfterInputCleanup(storedAsset.byteLength),
-          generationMetadata,
-        );
-      }
       revalidateStudioPaths();
       return 'succeeded' as const;
     } catch (storageError) {
@@ -550,16 +533,6 @@ async function processClaimedGeneration(
         return 'skipped' as const;
       }
 
-      if (
-        await cleanupQueuedGenerationInputFiles(admin, claimed.row.user_id, job)
-      ) {
-        await updateGenerationAfterInputCleanup(
-          admin,
-          claimed.row.id,
-          retainedStorageBytesAfterInputCleanup(),
-          generationMetadata,
-        );
-      }
       revalidateStudioPaths();
       return 'unavailable' as const;
     }
@@ -661,8 +634,6 @@ async function processClaimedGeneration(
       sherin_stage: 'failed',
     });
 
-    let failedStateSaved = false;
-
     try {
       const saved = await updateClaimedGenerationWithRetry(
         admin,
@@ -685,36 +656,11 @@ async function processClaimedGeneration(
         revalidateStudioPaths();
         return 'skipped' as const;
       }
-
-      failedStateSaved = true;
     } catch (failureUpdateError) {
       console.error(
         'Could not persist failed generation state',
         failureUpdateError,
       );
-    }
-
-    if (failedStateSaved) {
-      try {
-        const job = readQueuedGenerationJob(claimed.row.metadata);
-        if (
-          await cleanupQueuedGenerationInputFiles(
-            admin,
-            claimed.row.user_id,
-            job,
-          )
-        ) {
-          await updateGenerationAfterInputCleanup(
-            admin,
-            claimed.row.id,
-            retainedStorageBytesAfterInputCleanup(),
-            generationMetadata,
-          );
-        }
-      } catch {
-        // If the job payload itself is malformed, there are no trusted storage
-        // paths to clean up. The failure row already records the parse error.
-      }
     }
 
     revalidateStudioPaths();
@@ -913,44 +859,6 @@ async function updateClaimedGenerationWithRetry(
   throw new Error(errorMessage(lastError));
 }
 
-async function updateGenerationAfterInputCleanup(
-  admin: SupabaseAdminClient,
-  generationId: string,
-  storageBytes: number,
-  metadata: Json,
-) {
-  const cleanedMetadata = removeQueuedInputFileAssetsFromMetadata(metadata);
-  const { error } = await admin
-    .from('generations')
-    .update({ metadata: cleanedMetadata, storage_bytes: storageBytes })
-    .eq('id', generationId);
-
-  if (error) {
-    console.warn('Could not update generation after input cleanup', error);
-  }
-}
-
-function removeQueuedInputFileAssetsFromMetadata(metadata: Json | null) {
-  try {
-    const job = readQueuedGenerationJob(metadata);
-
-    return mergeGenerationMetadata(metadata, {
-      sherin_input_file_count: 0,
-      sherin_input_file_storage_paths: [],
-      sherin_input_files_cleaned_at: new Date().toISOString(),
-      sherin_job: {
-        ...job,
-        inputFileAssets: [],
-        inputFileUploadPaths: [],
-      },
-    });
-  } catch {
-    return mergeGenerationMetadata(metadata, {
-      sherin_input_files_cleaned_at: new Date().toISOString(),
-    });
-  }
-}
-
 async function failAbandonedGeneration(
   admin: SupabaseAdminClient,
   generation: GenerationRow,
@@ -984,74 +892,7 @@ async function failAbandonedGeneration(
     throw error;
   }
 
-  if ((data?.length ?? 0) > 0) {
-    if (
-      await cleanupQueuedGenerationInputFiles(
-        admin,
-        generation.user_id,
-        generation.metadata,
-      )
-    ) {
-      await updateGenerationAfterInputCleanup(
-        admin,
-        generation.id,
-        retainedStorageBytesAfterInputCleanup(),
-        metadata,
-      );
-    }
-  }
-
   return (data?.length ?? 0) > 0;
-}
-
-async function cleanupQueuedGenerationInputFiles(
-  admin: SupabaseAdminClient,
-  userId: string,
-  jobOrMetadata: QueuedGenerationJob | Json | null,
-) {
-  let inputFileAssets: QueuedGenerationJob['inputFileAssets'];
-  let inputFileUploadPaths: QueuedGenerationJob['inputFileUploadPaths'];
-
-  if (isQueuedGenerationJob(jobOrMetadata)) {
-    inputFileAssets = jobOrMetadata.inputFileAssets;
-    inputFileUploadPaths = jobOrMetadata.inputFileUploadPaths;
-  } else {
-    inputFileAssets = readQueuedGenerationInputFileAssets(jobOrMetadata);
-    inputFileUploadPaths =
-      readQueuedGenerationInputFileUploadPaths(jobOrMetadata);
-  }
-
-  if (inputFileAssets.length > 0) {
-    try {
-      await removeStoredAssets(
-        inputFileAssets.map((asset) => ({
-          storagePath: asset.storagePath,
-          storageProvider: asset.storageProvider,
-        })),
-      );
-    } catch (error) {
-      console.warn(
-        'Could not remove stored input media after terminal state',
-        error,
-      );
-
-      return false;
-    }
-  }
-
-  return await cleanupInputFileUploads(admin, userId, inputFileUploadPaths);
-}
-
-function isQueuedGenerationJob(
-  value: QueuedGenerationJob | Json | null,
-): value is QueuedGenerationJob {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    'inputFileAssets' in value &&
-    'inputFileUploadPaths' in value
-  );
 }
 
 function toInferenceRequest({

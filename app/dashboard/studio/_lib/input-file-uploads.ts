@@ -58,8 +58,10 @@ export class InvalidInputFileUploadError extends Error {
     readonly feedback:
       | 'invalid_input'
       | 'input_upload_invalid' = 'input_upload_invalid',
+    readonly cause?: unknown,
   ) {
     super(message);
+    this.name = 'InvalidInputFileUploadError';
   }
 }
 
@@ -291,15 +293,20 @@ async function persistInputFileAsset(input: {
   userId: string;
 }): Promise<StoredInputFileAsset> {
   const stored = await persistInputReferenceAsset(input);
-  const url = await resolveInputReferenceUrl(stored);
+  const storedUrl = await resolveInputReferenceUrl(stored);
+  const url = providerFacingInputAssetUrl({
+    originalUrl: input.originalUrl,
+    source: input.source,
+    storedUrl,
+  });
 
   if (!url) {
-    throw new Error('Stored input image did not return a readable URL.');
+    throw new Error('Stored input media did not return a readable URL.');
   }
 
   if (!isHttpsUrl(url)) {
     throw new InvalidInputFileUploadError(
-      'Stored input image URL must use HTTPS.',
+      'Stored input media URL must use HTTPS.',
       'invalid_input',
     );
   }
@@ -313,6 +320,26 @@ async function resolveInputReferenceUrl(asset: PersistedStorageAsset) {
     storagePath: asset.storagePath,
     storageProvider: asset.providerId,
   });
+}
+
+function providerFacingInputAssetUrl({
+  originalUrl,
+  source,
+  storedUrl,
+}: {
+  originalUrl?: string;
+  source: InputFileSource;
+  storedUrl: string | null;
+}) {
+  if (storedUrl && isHttpsUrl(storedUrl)) {
+    return storedUrl;
+  }
+
+  if (source === 'url' && originalUrl) {
+    return originalUrl;
+  }
+
+  return storedUrl;
 }
 
 function toStoredInputFileAsset(
@@ -378,7 +405,7 @@ export async function createInputFileAssetUrls(
   const urls: string[] = [];
 
   for (const asset of assets) {
-    const url = await resolveInputReferenceUrl({
+    const storedUrl = await resolveInputReferenceUrl({
       byteLength: asset.byteLength,
       contentType: asset.contentType,
       fallbackFromProviderId: asset.fallbackFromProviderId,
@@ -387,14 +414,21 @@ export async function createInputFileAssetUrls(
       publicUrl: asset.publicUrl,
       storagePath: asset.storagePath,
     });
+    const url = providerFacingInputAssetUrl({
+      originalUrl: asset.originalUrl,
+      source: asset.source,
+      storedUrl,
+    });
 
     if (!url) {
-      throw new Error('Stored input image did not return a readable URL.');
+      throw new Error('Stored input media did not return a readable URL.');
     }
 
     if (!isHttpsUrl(url)) {
       throw new InvalidInputFileUploadError(
-        'Stored input image URL must use HTTPS.',
+        asset.source === 'url'
+          ? 'Original input media URL must use HTTPS.'
+          : 'Stored input media URL must use HTTPS.',
         'invalid_input',
       );
     }
@@ -719,6 +753,7 @@ function downloadInputFileUrl(
     const request = httpsRequest(
       url,
       {
+        headers: inputDownloadHeaders(inputLabel),
         lookup: lookupPublicInputHost,
         method: 'GET',
       },
@@ -841,6 +876,7 @@ function downloadInputFileUrl(
         new InvalidInputFileUploadError(
           `Could not download input ${inputLabel} URL.`,
           'invalid_input',
+          error,
         ),
       );
     }
@@ -856,24 +892,59 @@ function downloadInputFileUrl(
   });
 }
 
-const lookupPublicInputHost: LookupFunction = (
-  hostname,
-  _options,
-  callback,
+function inputDownloadHeaders(inputLabel: string) {
+  return {
+    accept: inputLabel === 'video' ? 'video/*,*/*;q=0.8' : 'image/*,*/*;q=0.8',
+    'user-agent': 'Sherin/1.0 (+https://babysea.ai)',
+  };
+}
+
+const lookupPublicInputHost = ((
+  hostname: string,
+  optionsOrCallback: unknown,
+  maybeCallback?: unknown,
 ) => {
+  const options =
+    typeof optionsOrCallback === 'function' ? undefined : optionsOrCallback;
+  const callback =
+    typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
+
+  if (typeof callback !== 'function') {
+    return;
+  }
+
   void resolvePublicInputHost(hostname)
     .then((address) => {
+      if (isLookupAllOptions(options)) {
+        callback(null, [address]);
+        return;
+      }
+
       callback(null, address.address, address.family);
     })
     .catch((error) => {
+      if (isLookupAllOptions(options)) {
+        callback(error as NodeJS.ErrnoException, []);
+        return;
+      }
+
       callback(error as NodeJS.ErrnoException, '', 0);
     });
-};
+}) as LookupFunction;
+
+function isLookupAllOptions(value: unknown) {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    'all' in value &&
+    (value as { all?: unknown }).all === true,
+  );
+}
 
 async function resolvePublicInputHost(hostname: string) {
   if (isLocalOrPrivateHost(hostname)) {
     throw new InvalidInputFileUploadError(
-      'Input image URL host is not allowed.',
+      'Input media URL host is not allowed.',
       'invalid_input',
     );
   }
@@ -882,19 +953,19 @@ async function resolvePublicInputHost(hostname: string) {
 
   if (addresses.length === 0) {
     throw new InvalidInputFileUploadError(
-      'Input image URL host could not be verified.',
+      'Input media URL host could not be verified.',
       'invalid_input',
     );
   }
 
   if (addresses.some((address) => isLocalOrPrivateHost(address.address))) {
     throw new InvalidInputFileUploadError(
-      'Input image URL host resolves to a private address.',
+      'Input media URL host resolves to a private address.',
       'invalid_input',
     );
   }
 
-  return addresses[0]!;
+  return addresses.find((address) => address.family === 4) ?? addresses[0]!;
 }
 
 function responseHeader(headers: IncomingHttpHeaders, name: string) {

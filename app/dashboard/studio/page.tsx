@@ -45,7 +45,8 @@ const BABYSEA_SCHEMA_UNAVAILABLE_COPY =
 const STUDIO_TOASTS: Record<string, Omit<StudioToast, 'id'>> = {
   invalid_input: {
     type: 'warning',
-    message: 'Some generation settings are outside the active provider schema.',
+    message:
+      'Some generation settings or input media are invalid. Check the active model fields and use public HTTPS image or video URLs.',
   },
   inference_unconfigured: {
     type: 'warning',
