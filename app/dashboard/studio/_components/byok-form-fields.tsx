@@ -5,6 +5,7 @@ import { DEFAULT_GENERATION_OUTPUT_NUMBER } from '@/lib/app-config';
 import { Input } from '@/components/ui/input';
 
 import {
+  Base64ImagePromptField,
   Field,
   InputImageUrlsField,
   InputVideoUrlsField,
@@ -111,6 +112,13 @@ export function ByokFormFields({
             maxUrls={inputFileLimit}
             name="generation_input_file"
             required={Boolean(inputImageField.required)}
+          />
+        ) : null}
+
+        {inputImageField && inputFileLimit === 0 ? (
+          <Base64ImagePromptField
+            descriptionKey="byok_image_prompt"
+            name="byok_image_prompt"
           />
         ) : null}
 
