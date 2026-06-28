@@ -421,7 +421,7 @@ export function Base64ImagePromptField({
   return (
     <Field
       className="sm:col-span-2"
-      label="Image prompt (base64)"
+      label="Input image (base64)"
       description={base64ImagePromptDescription(descriptionKey)}
     >
       <Textarea

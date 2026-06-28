@@ -52,6 +52,8 @@ function buildContentSecurityPolicy() {
     'https://app.us.babysea.ai', // us-region
     'https://app.eu.babysea.ai', // eu-region
     'https://app.jp.babysea.ai', // apac-region
+    'https://*.runwayml.com', // global hosted
+    'https://*.cloudfront.net', // global cdn
     'https://lh3.googleusercontent.com', // Google profile photos from Google OAuth
     BABYSEA_CDN_ORIGIN, // app assets
     'https://imagedelivery.net', // app assets

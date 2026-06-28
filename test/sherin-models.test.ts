@@ -17,14 +17,6 @@ import {
 } from '@/lib/inference/runway/models';
 
 const RUNWAY_MODEL_EXPECTATIONS = [
-  { id: 'runway/act-two', label: 'Runway Act Two', providerModel: 'act_two' },
-  { id: 'runway/aleph-2', label: 'Runway Aleph 2', providerModel: 'aleph2' },
-  { id: 'runway/gen-4.5', label: 'Runway Gen-4.5', providerModel: 'gen4.5' },
-  {
-    id: 'runway/gen-4-aleph',
-    label: 'Runway Gen-4 Aleph',
-    providerModel: 'gen4_aleph',
-  },
   {
     id: 'runway/gen-4-image',
     label: 'Runway Gen-4 Image',
@@ -34,6 +26,14 @@ const RUNWAY_MODEL_EXPECTATIONS = [
     id: 'runway/gen-4-image-turbo',
     label: 'Runway Gen-4 Image Turbo',
     providerModel: 'gen4_image_turbo',
+  },
+  { id: 'runway/act-two', label: 'Runway Act Two', providerModel: 'act_two' },
+  { id: 'runway/aleph-2', label: 'Runway Aleph 2', providerModel: 'aleph2' },
+  { id: 'runway/gen-4.5', label: 'Runway Gen-4.5', providerModel: 'gen4.5' },
+  {
+    id: 'runway/gen-4-aleph',
+    label: 'Runway Gen-4 Aleph',
+    providerModel: 'gen4_aleph',
   },
   {
     id: 'runway/gen-4-turbo',

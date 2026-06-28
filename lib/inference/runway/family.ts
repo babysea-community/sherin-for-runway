@@ -4,11 +4,17 @@ import {
   type SemanticLadyModel,
 } from 'semantic-lady';
 
+const MODEL_LABEL_COLLATOR = new Intl.Collator('en', {
+  ignorePunctuation: true,
+  numeric: true,
+  sensitivity: 'base',
+});
+
 export const RUNWAY_PROVIDER_ID = 'runway' as const;
 export const RUNWAY_PROVIDER_LABEL = 'Runway';
 export const RUNWAY_PROVIDER_KEYWORD = 'runway';
 
-export const RUNWAY_MODEL_OPTIONS = [
+const RUNWAY_MODEL_OPTION_VALUES = [
   { id: 'runway/act-two', label: 'Runway Act Two' },
   { id: 'runway/aleph-2', label: 'Runway Aleph 2' },
   { id: 'runway/gen-4.5', label: 'Runway Gen-4.5' },
@@ -18,7 +24,16 @@ export const RUNWAY_MODEL_OPTIONS = [
   { id: 'runway/gen-4-turbo', label: 'Runway Gen-4 Turbo' },
 ] as const;
 
-export type RunwayModelId = (typeof RUNWAY_MODEL_OPTIONS)[number]['id'];
+export type RunwayModelId = (typeof RUNWAY_MODEL_OPTION_VALUES)[number]['id'];
+
+type RunwayModelOption = {
+  readonly id: RunwayModelId;
+  readonly label: string;
+};
+
+export const RUNWAY_MODEL_OPTIONS = [...RUNWAY_MODEL_OPTION_VALUES].sort(
+  compareRunwayModelOptions,
+) as RunwayModelOption[];
 
 export const RUNWAY_MODEL_IDS = RUNWAY_MODEL_OPTIONS.map(
   (model) => model.id,
@@ -133,6 +148,22 @@ export function getRunwaySemanticModel(
   }
 
   return model;
+}
+
+function compareRunwayModelOptions(
+  left: RunwayModelOption,
+  right: RunwayModelOption,
+) {
+  return (
+    modelKindRank(getRunwaySemanticModel(left.id).kind) -
+      modelKindRank(getRunwaySemanticModel(right.id).kind) ||
+    MODEL_LABEL_COLLATOR.compare(left.label, right.label) ||
+    MODEL_LABEL_COLLATOR.compare(left.id, right.id)
+  );
+}
+
+function modelKindRank(kind: SemanticLadyModel['kind']) {
+  return kind === 'image' ? 0 : 1;
 }
 
 function createRunwayBabySeaModelConfig(
