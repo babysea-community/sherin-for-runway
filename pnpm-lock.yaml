@@ -91,8 +91,8 @@ catalogs:
       specifier: 0.0.1
       version: 0.0.1
     simple-icons:
-      specifier: 16.21.0
-      version: 16.21.0
+      specifier: 16.24.1
+      version: 16.24.1
     sonner:
       specifier: 2.0.7
       version: 2.0.7
@@ -181,7 +181,7 @@ importers:
         version: 0.0.1
       simple-icons:
         specifier: 'catalog:'
-        version: 16.21.0
+        version: 16.24.1
       sonner:
         specifier: 'catalog:'
         version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -3692,8 +3692,8 @@ packages:
   signal-exit@3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
 
-  simple-icons@16.21.0:
-    resolution: {integrity: sha512-kH6LEx5yvBGVNaVrHnZ7D17G16CmmHiI8DD7MwIwgnWmDFTiFu4PhFZLNdV6bMGr61qbHMMTXLoo/T6C25dMGA==}
+  simple-icons@16.24.1:
+    resolution: {integrity: sha512-AnDQPrZAVzYSym7cBVIrnbhLk9auWGgkl+9hKvkbTqGEfH6TU7WKgumEXYYaJuM1Ib87+cnzr881UZniCM7t+A==}
     engines: {node: '>=0.12.18'}
 
   sonner@2.0.7:
@@ -7922,7 +7922,7 @@ snapshots:
   signal-exit@3.0.7:
     optional: true
 
-  simple-icons@16.21.0: {}
+  simple-icons@16.24.1: {}
 
   sonner@2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:

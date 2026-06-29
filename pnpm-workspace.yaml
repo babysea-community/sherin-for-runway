@@ -32,7 +32,7 @@ catalog:
   react-dom: 19.2.7
   semantic-lady: 0.6.1
   server-only: 0.0.1
-  simple-icons: 16.21.0
+  simple-icons: 16.24.1
   sonner: 2.0.7
   supabase: 2.108.0
   tailwind-merge: 3.6.0
