@@ -27,8 +27,9 @@ import { formatDate } from '@/lib/utils';
 import { InlineBabySea } from '@/components/icons/inline-babysea';
 import { InlineRunwayLight } from '@/components/icons/inline-inference';
 import {
-  InlineAwsS3Storage,
-  InlineCloudflareR2Storage,
+  InlineAwsS3,
+  InlineBackblazeB2,
+  InlineCloudflareR2,
   InlineSupabaseStorage,
   InlineVercelBlob,
 } from '@/components/icons/inline-storage';
@@ -386,8 +387,20 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
     return {
       content: (
         <>
-          <InlineAwsS3Storage className="size-4 shrink-0" aria-hidden="true" />
+          <InlineAwsS3 className="size-4 shrink-0" aria-hidden="true" />
           <span>AWS S3{fallbackSuffix}</span>
+        </>
+      ),
+      key: provider,
+    };
+  }
+
+  if (normalizedProvider === 'backblaze-b2') {
+    return {
+      content: (
+        <>
+          <InlineBackblazeB2 className="size-4 shrink-0" aria-hidden="true" />
+          <span>Backblaze B2{fallbackSuffix}</span>
         </>
       ),
       key: provider,
@@ -398,10 +411,7 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
     return {
       content: (
         <>
-          <InlineCloudflareR2Storage
-            className="size-4 shrink-0"
-            aria-hidden="true"
-          />
+          <InlineCloudflareR2 className="size-4 shrink-0" aria-hidden="true" />
           <span>Cloudflare R2{fallbackSuffix}</span>
         </>
       ),
@@ -508,6 +518,10 @@ function formatStorageProvider(provider: string) {
     return 'AWS S3';
   }
 
+  if (provider === 'backblaze-b2') {
+    return 'Backblaze B2';
+  }
+
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
   }
@@ -548,6 +562,13 @@ function normalizeStorageProviderForSummary(provider: string | null) {
 
   if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
     return 'aws-s3';
+  }
+
+  if (
+    normalizedProvider === 'backblaze-b2' ||
+    normalizedProvider === 'backblaze b2'
+  ) {
+    return 'backblaze-b2';
   }
 
   if (

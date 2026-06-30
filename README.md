@@ -133,7 +133,7 @@ BabySea model schemas are published at [babysea.ai/model-schema](https://babysea
 
 Use [`.env.example`](.env.example) as the source of truth for storage provider, quota, worker, and monitoring configuration.
 
-Supabase Storage is the default and fallback storage path. AWS S3, Cloudflare R2, and Vercel Blob are available when you want generated media in your own bucket or blob store.
+Supabase Storage is the default and fallback storage path. AWS S3, Backblaze B2, Cloudflare R2, and Vercel Blob are available when you want generated media in your own bucket or blob store. Leave the Backblaze B2 env values blank unless you intentionally set `STORAGE_PROVIDER=backblaze-b2`.
 
 ## Supported models
 

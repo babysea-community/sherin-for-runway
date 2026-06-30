@@ -1,6 +1,7 @@
 export type StorageProviderId =
   | 'supabase-storage'
   | 'aws-s3'
+  | 'backblaze-b2'
   | 'cloudflare-r2'
   | 'vercel-blob';
 

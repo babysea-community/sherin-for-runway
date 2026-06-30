@@ -14,6 +14,10 @@ import {
   isAwsS3StorageConfigured,
 } from './aws-s3/server-actions';
 import {
+  createBackblazeB2StorageProvider,
+  isBackblazeB2StorageConfigured,
+} from './backblaze-b2/server-actions';
+import {
   createCloudflareR2StorageProvider,
   isCloudflareR2StorageConfigured,
 } from './cloudflare-r2/server-actions';
@@ -84,7 +88,7 @@ export function resolveStorageProvider(): StorageProvider {
 
   if (configuredPreference && !preferred) {
     throw new Error(
-      'STORAGE_PROVIDER must be supabase-storage, aws-s3, cloudflare-r2, or vercel-blob.',
+      'STORAGE_PROVIDER must be supabase-storage, aws-s3, backblaze-b2, cloudflare-r2, or vercel-blob.',
     );
   }
 
@@ -117,6 +121,7 @@ export function getStorageProviderStatus() {
     availability: {
       'supabase-storage': true,
       'aws-s3': isAwsS3StorageConfigured(),
+      'backblaze-b2': isBackblazeB2StorageConfigured(),
       'cloudflare-r2': isCloudflareR2StorageConfigured(),
       'vercel-blob': isVercelBlobConfigured(),
     },
@@ -547,6 +552,8 @@ function createProvider(id: StorageProviderId): StorageProvider {
       return createSupabaseStorageProvider();
     case 'aws-s3':
       return createAwsS3StorageProvider();
+    case 'backblaze-b2':
+      return createBackblazeB2StorageProvider();
     case 'cloudflare-r2':
       return createCloudflareR2StorageProvider();
     case 'vercel-blob':
@@ -566,6 +573,7 @@ function normalizePreference(
   if (
     lower === 'supabase-storage' ||
     lower === 'aws-s3' ||
+    lower === 'backblaze-b2' ||
     lower === 'cloudflare-r2' ||
     lower === 'vercel-blob'
   ) {

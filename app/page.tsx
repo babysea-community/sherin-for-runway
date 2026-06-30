@@ -20,8 +20,9 @@ import {
 import { InlineRunwayLight } from '@/components/icons/inline-inference';
 import { InlineGitHub } from '@/components/icons/inline-git';
 import {
-  InlineAwsS3Storage,
-  InlineCloudflareR2Storage,
+  InlineAwsS3,
+  InlineBackblazeB2,
+  InlineCloudflareR2,
   InlineSupabaseStorage,
   InlineVercelBlob,
 } from '@/components/icons/inline-storage';
@@ -80,11 +81,15 @@ const storageOptions = [
   },
   {
     ariaLabel: 'AWS S3',
-    Icon: InlineAwsS3Storage,
+    Icon: InlineAwsS3,
+  },
+  {
+    ariaLabel: 'Backblaze B2',
+    Icon: InlineBackblazeB2,
   },
   {
     ariaLabel: 'Cloudflare R2',
-    Icon: InlineCloudflareR2Storage,
+    Icon: InlineCloudflareR2,
   },
   {
     ariaLabel: 'Vercel Blob',

@@ -18,8 +18,9 @@ import { getUser } from '@/lib/database/server-actions';
 import { getGenerationRequestSnapshot } from '@/lib/generation/display';
 import { InlineRunwayLight } from '@/components/icons/inline-model';
 import {
-  InlineAwsS3Storage,
-  InlineCloudflareR2Storage,
+  InlineAwsS3,
+  InlineBackblazeB2,
+  InlineCloudflareR2,
   InlineSupabaseStorage,
   InlineVercelBlob,
 } from '@/components/icons/inline-storage';
@@ -457,17 +458,16 @@ function storageProviderIcon(provider: string | null) {
   }
 
   if (provider === 'aws-s3') {
-    return (
-      <InlineAwsS3Storage className="size-4 shrink-0" aria-hidden="true" />
-    );
+    return <InlineAwsS3 className="size-4 shrink-0" aria-hidden="true" />;
+  }
+
+  if (provider === 'backblaze-b2') {
+    return <InlineBackblazeB2 className="size-4 shrink-0" aria-hidden="true" />;
   }
 
   if (provider === 'cloudflare-r2') {
     return (
-      <InlineCloudflareR2Storage
-        className="size-4 shrink-0"
-        aria-hidden="true"
-      />
+      <InlineCloudflareR2 className="size-4 shrink-0" aria-hidden="true" />
     );
   }
 
@@ -658,6 +658,13 @@ function normalizeStorageProvider(provider: string) {
 
   if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
     return 'aws-s3';
+  }
+
+  if (
+    normalizedProvider === 'backblaze-b2' ||
+    normalizedProvider === 'backblaze b2'
+  ) {
+    return 'backblaze-b2';
   }
 
   if (

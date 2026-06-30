@@ -59,7 +59,7 @@ const STUDIO_TOASTS: Record<string, Omit<StudioToast, 'id'>> = {
   input_upload_failed: {
     type: 'error',
     message:
-      'Input image upload failed before generation started. Check Supabase Storage and try again.',
+      'Input image upload failed before generation started. Check your storage provider and try again.',
   },
   input_upload_invalid: {
     type: 'warning',

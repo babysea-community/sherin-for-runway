@@ -204,6 +204,10 @@ function formatStorageProvider(provider: string) {
     return 'AWS S3';
   }
 
+  if (provider === 'backblaze-b2') {
+    return 'Backblaze B2';
+  }
+
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
   }
