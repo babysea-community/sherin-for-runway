@@ -41,6 +41,7 @@ Private workspace for generative media with own key, domain, and storage.
 [![Runway](https://custom-icon-badges.demolab.com/badge/runway-000000?style=for-the-badge&logo=runway&logoColor=white)](https://runwayml.com)
 [![Supabase](https://custom-icon-badges.demolab.com/badge/supabase-249361?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![AWS S3](https://custom-icon-badges.demolab.com/badge/aws_s3-3F8624?style=for-the-badge&logo=aws-s3-2&logoColor=white)](https://docs.aws.amazon.com/s3)
+[![Backblaze B2](https://custom-icon-badges.demolab.com/badge/backblaze_b2-E21E29?style=for-the-badge&logo=backblaze&logoColor=white)](https://www.backblaze.com/docs)
 [![Cloudflare R2](https://custom-icon-badges.demolab.com/badge/cloudflare_r2-F38020?style=for-the-badge&logo=cloudflare-r2&logoColor=white)](https://www.cloudflare.com)
 [![Vercel Blob](https://custom-icon-badges.demolab.com/badge/vercel_blob-E46000?style=for-the-badge&logo=vercel-blob-3)](https://vercel.com/docs/vercel-blob)
 [![Sentry](https://custom-icon-badges.demolab.com/badge/sentry-181225?style=for-the-badge&logo=sentry&logoColor=white)](https://sentry.io)
