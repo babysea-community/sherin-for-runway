@@ -9,6 +9,12 @@ const B2_API_BASE_URL = 'https://api.backblazeb2.com';
 const B2_API_VERSION = 'v3';
 const AUTH_CACHE_TTL_MS = 23 * 60 * 60 * 1000;
 const DOWNLOAD_AUTH_TTL_SECONDS = 60 * 60;
+const UPLOAD_URL_ATTEMPTS = 5;
+
+type BackblazeB2Error = Error & {
+  code?: string;
+  status?: number;
+};
 
 type BackblazeAuthorization = {
   accountId: string;
@@ -76,23 +82,11 @@ export function createBackblazeB2StorageProvider(): StorageProvider {
     label: `backblaze-b2 · ${bucketName}`,
     async store(payload: StoreInput): Promise<StoreResult> {
       const bucket = await resolveBucket(bucketName);
-      const upload = await getUploadUrl(bucket.bucketId);
       const fileName = normalizeFileName(payload.key);
-      const response = await fetch(upload.uploadUrl, {
-        body: Buffer.from(payload.data),
-        headers: {
-          Authorization: upload.authorizationToken,
-          'Content-Length': String(payload.data.byteLength),
-          'Content-Type': payload.contentType,
-          'X-Bz-Content-Sha1': sha1Hex(payload.data),
-          'X-Bz-File-Name': encodeB2Path(fileName),
-        },
-        method: 'POST',
+      const uploaded = await uploadFileWithFreshUrls(bucket.bucketId, {
+        ...payload,
+        key: fileName,
       });
-      const uploaded = await readB2Json<BackblazeUploadResponse>(
-        response,
-        'b2_upload_file',
-      );
 
       return {
         storagePath: uploaded.fileName || fileName,
@@ -218,6 +212,45 @@ async function getUploadUrl(bucketId: string) {
   });
 }
 
+async function uploadFileWithFreshUrls(bucketId: string, payload: StoreInput) {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= UPLOAD_URL_ATTEMPTS; attempt += 1) {
+    const upload = await getUploadUrl(bucketId);
+
+    try {
+      return await uploadFile(upload, payload);
+    } catch (error) {
+      lastError = error;
+
+      if (!isRetryableUploadError(error) || attempt === UPLOAD_URL_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Backblaze B2 upload failed.');
+}
+
+async function uploadFile(upload: BackblazeUploadUrl, payload: StoreInput) {
+  const body = Buffer.from(payload.data);
+  const response = await fetch(upload.uploadUrl, {
+    body,
+    headers: {
+      Authorization: upload.authorizationToken,
+      'Content-Length': String(body.byteLength),
+      'Content-Type': payload.contentType,
+      'X-Bz-Content-Sha1': sha1Hex(body),
+      'X-Bz-File-Name': encodeB2Path(payload.key),
+    },
+    method: 'POST',
+  });
+
+  return readB2Json<BackblazeUploadResponse>(response, 'b2_upload_file');
+}
+
 async function createAuthorizedDownloadUrl(
   bucketName: string,
   fileName: string,
@@ -300,12 +333,61 @@ async function readB2Json<T>(response: Response, operation: string) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(
-      `Backblaze B2 ${operation} failed (${response.status}): ${text || response.statusText}`,
-    );
+    throw createB2Error(response, operation, text);
   }
 
   return (text ? JSON.parse(text) : {}) as T;
+}
+
+function createB2Error(
+  response: Response,
+  operation: string,
+  text: string,
+): BackblazeB2Error {
+  const body = parseB2ErrorBody(text);
+  const code = typeof body?.code === 'string' ? body.code : undefined;
+  const message = typeof body?.message === 'string' ? body.message : text;
+  const error = new Error(
+    `Backblaze B2 ${operation} failed (${response.status}${code ? ` ${code}` : ''}): ${message || response.statusText}`,
+  ) as BackblazeB2Error;
+
+  error.code = code;
+  error.status = response.status;
+
+  return error;
+}
+
+function parseB2ErrorBody(text: string) {
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as { code?: unknown; message?: unknown };
+  } catch {
+    return null;
+  }
+}
+
+function isRetryableUploadError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const status = 'status' in error ? error.status : undefined;
+  const code = 'code' in error ? error.code : undefined;
+
+  if (typeof status !== 'number') {
+    return error instanceof TypeError;
+  }
+
+  return (
+    status === 408 ||
+    status === 429 ||
+    status >= 500 ||
+    (status === 401 &&
+      (code === 'expired_auth_token' || code === 'bad_auth_token'))
+  );
 }
 
 function normalizeFileName(value: string) {
