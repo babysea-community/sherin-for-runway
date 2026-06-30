@@ -24,6 +24,7 @@ Private workspace for generative media with own key, domain, and storage.
 
 <strong>Checks</strong>
 
+[![Netlify Status](https://img.shields.io/netlify/1497e7e3-a5a1-487b-9cd3-601a797baa4e?style=for-the-badge&logo=netlify&logoColor=white&label=netlify&color=BEF9C6)](https://app.netlify.com/projects/sherin-for-runway/deploys)
 [![GitLabCI](https://img.shields.io/gitlab/pipeline-status/babysea/sherin-for-runway?branch=main&style=for-the-badge&label=gitlabci&logo=gitlab&logoColor=white&color=FC6D26)](https://gitlab.com/babysea/sherin-for-runway/-/commits/main)
 [![Sentry](https://img.shields.io/github/actions/workflow/status/babysea-community/sherin-for-runway/sentry-check.yml?style=for-the-badge&label=sentry&logo=sentry&logoColor=white&color=181225)](https://github.com/babysea-community/sherin-for-runway/actions/workflows/sentry-check.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/babysea-community/sherin-for-runway/codeql.yml?style=for-the-badge&label=codeql&logo=github&logoColor=white)](https://github.com/babysea-community/sherin-for-runway/actions/workflows/codeql.yml)
