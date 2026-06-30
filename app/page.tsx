@@ -12,7 +12,7 @@ import type { ComponentType, SVGProps } from 'react';
 
 import {
   InlineDigitalOcean,
-  InlineNetlify,
+  InlineNetlifyLight,
   InlineRailwayLight,
   InlineRenderLight,
   InlineVercelLight,
@@ -76,10 +76,6 @@ const supportedModels = MODEL_OPTIONS.map((model) => ({
 
 const storageOptions = [
   {
-    ariaLabel: 'Supabase Storage',
-    Icon: InlineSupabaseStorage,
-  },
-  {
     ariaLabel: 'AWS S3',
     Icon: InlineAwsS3,
   },
@@ -90,6 +86,10 @@ const storageOptions = [
   {
     ariaLabel: 'Cloudflare R2',
     Icon: InlineCloudflareR2,
+  },
+  {
+    ariaLabel: 'Supabase Storage',
+    Icon: InlineSupabaseStorage,
   },
   {
     ariaLabel: 'Vercel Blob',
@@ -104,7 +104,7 @@ const hostingOptions = [
   },
   {
     ariaLabel: 'Netlify',
-    Icon: InlineNetlify,
+    Icon: InlineNetlifyLight,
   },
   {
     ariaLabel: 'Railway',
@@ -167,7 +167,9 @@ export default function HomePage() {
             </p>
 
             <h1 className="mt-7 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-6xl">
-              Own key. Own domain. Own storage.
+              <span className="block">Own key.</span>
+              <span className="block">Own domain.</span>
+              <span className="block">Own storage.</span>
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">

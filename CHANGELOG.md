@@ -4,6 +4,10 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 
 ## [Unreleased]
 
+### Added
+
+- Add optional Backblaze B2 storage support for generated media and reference assets.
+
 ### Changed
 
 - Standardize Runway BYOK form rendering around Semantic Lady schema fields.
