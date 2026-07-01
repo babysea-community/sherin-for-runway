@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 
-import { getOptionalEnv, requireEnv } from '@/lib/utils/env';
+import { getOptionalEnv } from '@/lib/utils/env';
 import type { StorageProvider, StoreInput, StoreResult } from '../types';
 
 const B2_API_BASE_URL = 'https://api.backblazeb2.com';
@@ -10,6 +10,16 @@ const B2_API_VERSION = 'v3';
 const AUTH_CACHE_TTL_MS = 23 * 60 * 60 * 1000;
 const DOWNLOAD_AUTH_TTL_SECONDS = 60 * 60;
 const UPLOAD_URL_ATTEMPTS = 5;
+const KEY_ID_ENV_NAMES = ['BACKBLAZE_B2_KEY_ID', 'B2_KEY_ID'] as const;
+const APPLICATION_KEY_ENV_NAMES = [
+  'BACKBLAZE_B2_APPLICATION_KEY',
+  'BACKBLAZE_B2_APP_KEY',
+  'B2_APP_KEY',
+] as const;
+const BUCKET_NAME_ENV_NAMES = [
+  'BACKBLAZE_B2_BUCKET_NAME',
+  'B2_BUCKET_NAME',
+] as const;
 
 type BackblazeB2Error = Error & {
   code?: string;
@@ -68,14 +78,14 @@ let cachedBuckets = new Map<string, BackblazeBucket>();
 
 export function isBackblazeB2StorageConfigured() {
   return Boolean(
-    getOptionalEnv('BACKBLAZE_B2_KEY_ID') &&
-    getOptionalEnv('BACKBLAZE_B2_APPLICATION_KEY') &&
-    getOptionalEnv('BACKBLAZE_B2_BUCKET_NAME'),
+    optionalFirstEnv(KEY_ID_ENV_NAMES) &&
+    optionalFirstEnv(APPLICATION_KEY_ENV_NAMES) &&
+    optionalFirstEnv(BUCKET_NAME_ENV_NAMES),
   );
 }
 
 export function createBackblazeB2StorageProvider(): StorageProvider {
-  const bucketName = requireEnv('BACKBLAZE_B2_BUCKET_NAME');
+  const bucketName = requireFirstEnv(BUCKET_NAME_ENV_NAMES);
 
   return {
     id: 'backblaze-b2',
@@ -116,12 +126,13 @@ export function createBackblazeB2StorageProvider(): StorageProvider {
   };
 }
 
-async function authorizeAccount() {
-  const keyId = requireEnv('BACKBLAZE_B2_KEY_ID');
-  const applicationKey = requireEnv('BACKBLAZE_B2_APPLICATION_KEY');
+async function authorizeAccount({ forceRefresh = false } = {}) {
+  const keyId = requireFirstEnv(KEY_ID_ENV_NAMES);
+  const applicationKey = requireFirstEnv(APPLICATION_KEY_ENV_NAMES);
   const cacheKey = `${keyId}:${applicationKey}`;
 
   if (
+    !forceRefresh &&
     cachedAuthorization?.cacheKey === cacheKey &&
     cachedAuthorization.expiresAt > Date.now()
   ) {
@@ -314,6 +325,28 @@ async function b2Api<T>(
   operation: string,
   body: Record<string, unknown>,
 ) {
+  try {
+    return await callB2Api<T>(authorization, operation, body);
+  } catch (error) {
+    if (!isExpiredAuthorizationError(error)) {
+      throw error;
+    }
+
+    cachedAuthorization = null;
+
+    return callB2Api<T>(
+      await authorizeAccount({ forceRefresh: true }),
+      operation,
+      body,
+    );
+  }
+}
+
+async function callB2Api<T>(
+  authorization: BackblazeAuthorization,
+  operation: string,
+  body: Record<string, unknown>,
+) {
   const response = await fetch(
     `${authorization.apiUrl}/b2api/${B2_API_VERSION}/${operation}`,
     {
@@ -327,6 +360,30 @@ async function b2Api<T>(
   );
 
   return readB2Json<T>(response, operation);
+}
+
+function optionalFirstEnv(names: readonly string[]) {
+  for (const name of names) {
+    const value = getOptionalEnv(name);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function requireFirstEnv(names: readonly string[]) {
+  const value = optionalFirstEnv(names);
+
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable: ${names.join(' or ')}`,
+    );
+  }
+
+  return value;
 }
 
 async function readB2Json<T>(response: Response, operation: string) {
@@ -387,6 +444,20 @@ function isRetryableUploadError(error: unknown) {
     status >= 500 ||
     (status === 401 &&
       (code === 'expired_auth_token' || code === 'bad_auth_token'))
+  );
+}
+
+function isExpiredAuthorizationError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const status = 'status' in error ? error.status : undefined;
+  const code = 'code' in error ? error.code : undefined;
+
+  return (
+    status === 401 &&
+    (code === 'expired_auth_token' || code === 'bad_auth_token')
   );
 }
 

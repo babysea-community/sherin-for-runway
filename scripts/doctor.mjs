@@ -69,11 +69,6 @@ const storageRequirements = {
     'AWS_S3_BUCKET_NAME',
     'AWS_S3_ENDPOINT_URL',
   ],
-  'backblaze-b2': [
-    'BACKBLAZE_B2_KEY_ID',
-    'BACKBLAZE_B2_APPLICATION_KEY',
-    'BACKBLAZE_B2_BUCKET_NAME',
-  ],
   'cloudflare-r2': [
     'CLOUDFLARE_R2_ACCOUNT_ID',
     'CLOUDFLARE_R2_ACCESS_KEY_ID',
@@ -83,10 +78,20 @@ const storageRequirements = {
     'CLOUDFLARE_R2_CUSTOM_DOMAIN_URL',
   ],
 };
+const BACKBLAZE_B2_KEY_ID_ENV_NAMES = ['BACKBLAZE_B2_KEY_ID', 'B2_KEY_ID'];
+const BACKBLAZE_B2_APPLICATION_KEY_ENV_NAMES = [
+  'BACKBLAZE_B2_APPLICATION_KEY',
+  'BACKBLAZE_B2_APP_KEY',
+  'B2_APP_KEY',
+];
+const BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES = [
+  'BACKBLAZE_B2_BUCKET_NAME',
+  'B2_BUCKET_NAME',
+];
 const storageAvailability = {
   'supabase-storage': true,
   'aws-s3': hasAll(storageRequirements['aws-s3']),
-  'backblaze-b2': hasAll(storageRequirements['backblaze-b2']),
+  'backblaze-b2': hasBackblazeB2Config(),
   'cloudflare-r2': hasAll(storageRequirements['cloudflare-r2']),
   'vercel-blob': Boolean(optional('BLOB_READ_WRITE_TOKEN')),
 };
@@ -105,8 +110,8 @@ if (hasAny(storageRequirements['aws-s3'])) {
   checkRequiredGroup('aws-s3', storageRequirements['aws-s3']);
 }
 
-if (hasAny(storageRequirements['backblaze-b2'])) {
-  checkRequiredGroup('backblaze-b2', storageRequirements['backblaze-b2']);
+if (hasAnyBackblazeB2Config()) {
+  checkBackblazeB2Config();
 }
 
 if (hasAny(storageRequirements['cloudflare-r2'])) {
@@ -213,6 +218,18 @@ function optional(name) {
   const value = env[name]?.trim();
 
   return value ? value : undefined;
+}
+
+function firstOptional(names) {
+  for (const name of names) {
+    const value = optional(name);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 function checkRequired(name) {
@@ -438,6 +455,40 @@ function hasAny(names) {
   return names.some((name) => Boolean(optional(name)));
 }
 
+function hasBackblazeB2Config() {
+  return Boolean(
+    firstOptional(BACKBLAZE_B2_KEY_ID_ENV_NAMES) &&
+    firstOptional(BACKBLAZE_B2_APPLICATION_KEY_ENV_NAMES) &&
+    firstOptional(BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES),
+  );
+}
+
+function hasAnyBackblazeB2Config() {
+  return Boolean(
+    firstOptional(BACKBLAZE_B2_KEY_ID_ENV_NAMES) ||
+    firstOptional(BACKBLAZE_B2_APPLICATION_KEY_ENV_NAMES) ||
+    firstOptional(BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES),
+  );
+}
+
+function checkBackblazeB2Config() {
+  const missing = [
+    firstOptional(BACKBLAZE_B2_KEY_ID_ENV_NAMES)
+      ? null
+      : 'BACKBLAZE_B2_KEY_ID or B2_KEY_ID',
+    firstOptional(BACKBLAZE_B2_APPLICATION_KEY_ENV_NAMES)
+      ? null
+      : 'BACKBLAZE_B2_APPLICATION_KEY, BACKBLAZE_B2_APP_KEY, or B2_APP_KEY',
+    firstOptional(BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES)
+      ? null
+      : 'BACKBLAZE_B2_BUCKET_NAME or B2_BUCKET_NAME',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    fail(`backblaze-b2 requires ${missing.join('; ')}.`);
+  }
+}
+
 function checkRequiredGroup(provider, names) {
   const missing = names.filter((name) => !optional(name));
 
@@ -657,13 +708,13 @@ async function probeStorage() {
 }
 
 async function probeBackblazeB2Storage(key, payload) {
-  const keyId = optional('BACKBLAZE_B2_KEY_ID');
-  const applicationKey = optional('BACKBLAZE_B2_APPLICATION_KEY');
-  const bucketName = optional('BACKBLAZE_B2_BUCKET_NAME');
+  const keyId = firstOptional(BACKBLAZE_B2_KEY_ID_ENV_NAMES);
+  const applicationKey = firstOptional(BACKBLAZE_B2_APPLICATION_KEY_ENV_NAMES);
+  const bucketName = firstOptional(BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES);
 
   if (!keyId || !applicationKey || !bucketName) {
     fail(
-      'Backblaze B2 smoke test requires BACKBLAZE_B2_KEY_ID, BACKBLAZE_B2_APPLICATION_KEY, and BACKBLAZE_B2_BUCKET_NAME.',
+      'Backblaze B2 smoke test requires BACKBLAZE_B2_KEY_ID/B2_KEY_ID, BACKBLAZE_B2_APPLICATION_KEY/B2_APP_KEY, and BACKBLAZE_B2_BUCKET_NAME/B2_BUCKET_NAME.',
     );
     return;
   }
@@ -755,7 +806,10 @@ async function authorizeBackblazeAccount(keyId, applicationKey) {
 }
 
 async function resolveBackblazeBucket(authorization, bucketName) {
-  const explicitBucketId = optional('BACKBLAZE_B2_BUCKET_ID');
+  const explicitBucketId = firstOptional([
+    'BACKBLAZE_B2_BUCKET_ID',
+    'B2_BUCKET_ID',
+  ]);
 
   if (explicitBucketId) {
     return { bucketId: explicitBucketId, bucketName };

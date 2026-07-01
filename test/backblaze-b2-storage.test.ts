@@ -106,6 +106,125 @@ describe('Backblaze B2 native storage provider', () => {
       'X-Bz-File-Name': 'user%201/generation%2B%E6%97%A5%E6%9C%AC%E8%AA%9E.png',
     });
   });
+
+  it('accepts standard B2_KEY_ID and B2_APP_KEY environment aliases', async () => {
+    process.env = {
+      ...originalEnv,
+      B2_APP_KEY: 'alias-application-key',
+      B2_BUCKET_NAME: 'the-blazer',
+      B2_KEY_ID: 'alias-key-id',
+    };
+
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      const requestUrl = String(url);
+
+      if (requestUrl.endsWith('/b2_authorize_account')) {
+        return jsonResponse({
+          accountId: 'account-id',
+          allowed: { bucketId: 'bucket-id', bucketName: 'the-blazer' },
+          apiUrl: 'https://api005.backblazeb2.com',
+          authorizationToken: 'account-token',
+          downloadUrl: 'https://f005.backblazeb2.com',
+        });
+      }
+
+      if (requestUrl.endsWith('/b2_get_upload_url')) {
+        return jsonResponse({
+          authorizationToken: 'upload-token',
+          uploadUrl: 'https://pod.example.com/upload',
+        });
+      }
+
+      if (requestUrl === 'https://pod.example.com/upload') {
+        return jsonResponse({ fileName: 'asset.png' });
+      }
+
+      throw new Error(`Unexpected fetch URL: ${requestUrl}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { createBackblazeB2StorageProvider, isBackblazeB2StorageConfigured } =
+      await import('@/lib/storage/backblaze-b2/server-actions');
+
+    expect(isBackblazeB2StorageConfigured()).toBe(true);
+
+    await createBackblazeB2StorageProvider().store({
+      contentType: 'image/png',
+      data: new TextEncoder().encode('image'),
+      key: 'asset.png',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.backblazeb2.com/b2api/v3/b2_authorize_account',
+      expect.objectContaining({
+        headers: {
+          Authorization: `Basic ${Buffer.from('alias-key-id:alias-application-key').toString('base64')}`,
+        },
+      }),
+    );
+  });
+
+  it('refreshes account authorization when Backblaze rejects a cached API token', async () => {
+    const fetchMock = vi.fn(async (url: string | URL) => {
+      const requestUrl = String(url);
+
+      if (requestUrl.endsWith('/b2_authorize_account')) {
+        const requestNumber = fetchMock.mock.calls.filter(([callUrl]) =>
+          String(callUrl).endsWith('/b2_authorize_account'),
+        ).length;
+
+        return jsonResponse({
+          accountId: 'account-id',
+          allowed: { bucketId: 'bucket-id', bucketName: 'the-blazer' },
+          apiUrl: 'https://api005.backblazeb2.com',
+          authorizationToken: `account-token-${requestNumber}`,
+          downloadUrl: 'https://f005.backblazeb2.com',
+        });
+      }
+
+      if (requestUrl.endsWith('/b2_get_upload_url')) {
+        const requestNumber = fetchMock.mock.calls.filter(([callUrl]) =>
+          String(callUrl).endsWith('/b2_get_upload_url'),
+        ).length;
+
+        if (requestNumber === 1) {
+          return jsonResponse(
+            { code: 'expired_auth_token', message: 'Account token expired.' },
+            { status: 401 },
+          );
+        }
+
+        return jsonResponse({
+          authorizationToken: 'upload-token',
+          uploadUrl: 'https://pod.example.com/upload',
+        });
+      }
+
+      if (requestUrl === 'https://pod.example.com/upload') {
+        return jsonResponse({ fileName: 'asset.png' });
+      }
+
+      throw new Error(`Unexpected fetch URL: ${requestUrl}`);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { createBackblazeB2StorageProvider } =
+      await import('@/lib/storage/backblaze-b2/server-actions');
+
+    await createBackblazeB2StorageProvider().store({
+      contentType: 'image/png',
+      data: new TextEncoder().encode('image'),
+      key: 'asset.png',
+    });
+
+    expect(
+      fetchMock.mock.calls.filter(([callUrl]) =>
+        String(callUrl).endsWith('/b2_authorize_account'),
+      ),
+    ).toHaveLength(2);
+  });
 });
 
 function jsonResponse(body: unknown, init?: ResponseInit) {

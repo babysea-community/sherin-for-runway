@@ -17,6 +17,7 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 
 ### Fixed
 
+- Accept standard Backblaze `B2_KEY_ID`, `B2_APP_KEY`, and `B2_BUCKET_NAME` env aliases and refresh stale Backblaze Native API account tokens before falling back to Supabase Storage.
 - Ignore stale form values that are outside the active Runway model schema.
 - Omit empty video input values from BYOK submissions so image-only Runway model paths do not receive unsupported schema fields.
 - Preserve durable input reference assets after terminal generation states so the References dashboard keeps displaying uploaded and URL-based inputs.

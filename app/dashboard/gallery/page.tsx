@@ -80,6 +80,8 @@ export default async function GalleryPage() {
     const storageProvider = storageProviderForGeneration(generation);
     const fallbackStorageProvider =
       fallbackStorageProviderForGeneration(generation);
+    const fallbackStorageReason =
+      fallbackStorageReasonForGeneration(generation);
 
     return {
       ...generation,
@@ -93,6 +95,7 @@ export default async function GalleryPage() {
         storageProvider,
         generation.status,
         fallbackStorageProvider,
+        fallbackStorageReason,
       ),
       fallbackStorageProvider,
       previewContentType,
@@ -617,12 +620,22 @@ function fallbackStorageProviderForGeneration(generation: {
   );
 }
 
+function fallbackStorageReasonForGeneration(generation: {
+  metadata: Parameters<typeof getGenerationMetadataString>[0];
+}) {
+  return getGenerationMetadataString(
+    generation.metadata,
+    'sherin_storage_fallback_reason',
+  );
+}
+
 function imageInfoForGeneration(
   previewSource: 'storage' | null,
   inferenceProvider: string,
   storageProvider: string,
   status: string,
   fallbackStorageProvider: string | null,
+  fallbackStorageReason: string | null,
 ) {
   if (previewSource === 'storage') {
     if (
@@ -634,6 +647,12 @@ function imageInfoForGeneration(
           Your <CodeValue>{storageProvider}</CodeValue> works as fallback, but
           your <CodeValue>{fallbackStorageProvider}</CodeValue> is not set up
           correctly.
+          {fallbackStorageReason ? (
+            <>
+              {' '}
+              Reason: <CodeValue>{fallbackStorageReason}</CodeValue>
+            </>
+          ) : null}
         </>
       );
     }
