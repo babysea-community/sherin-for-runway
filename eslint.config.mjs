@@ -1,4 +1,4 @@
-// Flat ESLint config for the Sherin starter.
+// Flat ESLint config for the starter.
 //
 // Goals:
 // - Catch obvious bugs (`@eslint/js` recommended + typescript-eslint recommended)

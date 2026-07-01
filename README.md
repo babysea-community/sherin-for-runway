@@ -162,11 +162,11 @@ Supported model names and provider fields are registered in [`lib/model-family.t
 
 ## Runtime
 
-- Sherin is owner-only. Supabase Google OAuth signs users in, and the configured owner allowlist gates dashboard access.
+- The project is owner-only. Supabase Google OAuth signs users in, and the configured owner allowlist gates dashboard access.
 - Provider credentials, storage credentials, Supabase service role keys, Sentry auth tokens, and cron secrets stay server-side.
 - Generation records, prompts, statuses, provider metadata, storage URLs, reference images, and profile state persist in Supabase Postgres.
 - Studio, Gallery, References, and Usage can process queued/running generations. `/api/generations/process` can also be called by cron with the worker bearer secret configured from [`.env.example`](.env.example).
-- Sherin is not a managed BabySea service, commercial support package, hosting service, billing starter, credit ledger, provider marketplace, or multi-tenant team workspace.
+- The project is not a managed BabySea service, commercial support package, hosting service, billing starter, credit ledger, provider marketplace, or multi-tenant team workspace.
 
 ## Deployment
 

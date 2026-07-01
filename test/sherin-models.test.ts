@@ -42,7 +42,7 @@ const RUNWAY_MODEL_EXPECTATIONS = [
   },
 ] as const;
 
-describe('Sherin model registry', () => {
+describe('App model registry', () => {
   it('derives provider model options from the central registry', () => {
     expect(BYOK_INFERENCE_PROVIDER_ID).toBe('runway');
     expect(BYOK_INFERENCE_PROVIDER_LABEL).toBe('Runway');

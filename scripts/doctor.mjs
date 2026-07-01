@@ -547,9 +547,7 @@ function checkDeployButtons() {
 
   if (!readme.includes(expectedRailwayButton)) {
     ok = false;
-    fail(
-      'README Railway deploy button must use the published Sherin template.',
-    );
+    fail('README Railway deploy button must use the published template.');
   }
 
   if (!readme.includes(expectedRenderButton)) {
@@ -562,7 +560,7 @@ function checkDeployButtons() {
   if (
     !readme.includes('### Railway') ||
     !readme.includes(
-      'Use the Deploy on Railway button above to start from the published Sherin template',
+      'Use the Deploy on Railway button above to start from the published app template',
     )
   ) {
     ok = false;

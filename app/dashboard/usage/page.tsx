@@ -31,7 +31,7 @@ import { createUsageMetrics, type UsageMetrics } from './_lib/usage-metrics';
 
 export const metadata: Metadata = {
   title: 'Usage',
-  description: 'Generation metrics for your Sherin workspace.',
+  description: 'Generation metrics for your private workspace.',
   robots: { index: false, follow: false },
 };
 

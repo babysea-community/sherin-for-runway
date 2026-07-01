@@ -45,7 +45,7 @@ import { GalleryPreviewPanel } from './_components/gallery-preview-panel';
 
 export const metadata: Metadata = {
   title: 'Gallery',
-  description: 'Every media asset you have generated through Sherin.',
+  description: 'Every media asset you have generated.',
   robots: { index: false, follow: false },
 };
 

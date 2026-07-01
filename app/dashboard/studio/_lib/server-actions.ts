@@ -430,7 +430,7 @@ export async function cancelActiveGeneration() {
 
   const canceledAt = new Date().toISOString();
   const message =
-    'Canceled in Sherin by owner. Provider-side jobs already running may still complete.';
+    'Canceled by owner. Provider-side jobs already running may still complete.';
   const inputFileBytes = inputFileAssetsByteLengthFromMetadata(
     activeGeneration.metadata,
   );

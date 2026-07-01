@@ -3,7 +3,7 @@
   publish = ".next"
 
 [template.environment]
-  NEXT_PUBLIC_SITE_URL = "Required. The exact URL where Sherin runs, for example https://<your_domain>."
+  NEXT_PUBLIC_SITE_URL = "Required. The exact URL where app runs, for example https://<your_domain>."
   OWNER_EMAIL = "Required. The one Google email allowed to access the dashboard."
   NEXT_PUBLIC_SUPABASE_URL = "Required. Your Supabase project URL."
   NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = "Required. Your Supabase publishable or anon key."

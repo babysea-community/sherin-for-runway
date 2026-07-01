@@ -130,7 +130,7 @@ export function getStorageProviderStatus() {
 
 /**
  * Download a remote asset and persist it through the active storage provider.
- * If that write fails, Sherin falls back to its own Supabase bucket before
+ * If that write fails, app falls back to its own Supabase bucket before
  * leaving the provider-hosted URL as the only usable image.
  */
 export async function persistRemoteAsset(input: {

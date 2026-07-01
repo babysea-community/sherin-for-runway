@@ -44,7 +44,7 @@ import { readQueuedGenerationInputFileAssets } from '../studio/_lib/generation-j
 
 export const metadata: Metadata = {
   title: 'References',
-  description: 'Every input image stored through Sherin.',
+  description: 'Every input image stored.',
   robots: { index: false, follow: false },
 };
 
