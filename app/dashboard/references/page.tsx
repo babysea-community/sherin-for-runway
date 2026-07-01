@@ -368,21 +368,6 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
     ? ' (fallback)'
     : '';
 
-  if (normalizedProvider === 'supabase-storage') {
-    return {
-      content: (
-        <>
-          <InlineSupabaseStorage
-            className="size-4 shrink-0"
-            aria-hidden="true"
-          />
-          <span>Supabase Storage{fallbackSuffix}</span>
-        </>
-      ),
-      key: provider,
-    };
-  }
-
   if (normalizedProvider === 'aws-s3') {
     return {
       content: (
@@ -413,6 +398,21 @@ function storageProviderSummaryValue(provider: string): ProviderSummaryValue {
         <>
           <InlineCloudflareR2 className="size-4 shrink-0" aria-hidden="true" />
           <span>Cloudflare R2{fallbackSuffix}</span>
+        </>
+      ),
+      key: provider,
+    };
+  }
+
+  if (normalizedProvider === 'supabase-storage') {
+    return {
+      content: (
+        <>
+          <InlineSupabaseStorage
+            className="size-4 shrink-0"
+            aria-hidden="true"
+          />
+          <span>Supabase Storage{fallbackSuffix}</span>
         </>
       ),
       key: provider,
@@ -510,10 +510,6 @@ function formatInferenceProvider(provider: string) {
 }
 
 function formatStorageProvider(provider: string) {
-  if (provider === 'supabase-storage') {
-    return 'Supabase Storage';
-  }
-
   if (provider === 'aws-s3') {
     return 'AWS S3';
   }
@@ -524,6 +520,10 @@ function formatStorageProvider(provider: string) {
 
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
+  }
+
+  if (provider === 'supabase-storage') {
+    return 'Supabase Storage';
   }
 
   if (provider === 'vercel-blob') {
@@ -553,13 +553,6 @@ function normalizeStorageProviderForSummary(provider: string | null) {
     .toLowerCase()
     .replace(/\s*\(fallback\)\s*$/, '');
 
-  if (
-    normalizedProvider === 'supabase-storage' ||
-    normalizedProvider === 'supabase storage'
-  ) {
-    return 'supabase-storage';
-  }
-
   if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
     return 'aws-s3';
   }
@@ -576,6 +569,13 @@ function normalizeStorageProviderForSummary(provider: string | null) {
     normalizedProvider === 'cloudflare r2'
   ) {
     return 'cloudflare-r2';
+  }
+
+  if (
+    normalizedProvider === 'supabase-storage' ||
+    normalizedProvider === 'supabase storage'
+  ) {
+    return 'supabase-storage';
   }
 
   if (

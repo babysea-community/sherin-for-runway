@@ -8,7 +8,6 @@ import type {
   StoreInput,
   StoreResult,
 } from './types';
-import { createSupabaseStorageProvider } from './supabase-storage/server-actions';
 import {
   createAwsS3StorageProvider,
   isAwsS3StorageConfigured,
@@ -21,6 +20,7 @@ import {
   createCloudflareR2StorageProvider,
   isCloudflareR2StorageConfigured,
 } from './cloudflare-r2/server-actions';
+import { createSupabaseStorageProvider } from './supabase-storage/server-actions';
 import {
   createVercelBlobProvider,
   isVercelBlobConfigured,
@@ -88,7 +88,7 @@ export function resolveStorageProvider(): StorageProvider {
 
   if (configuredPreference && !preferred) {
     throw new Error(
-      'STORAGE_PROVIDER must be supabase-storage, aws-s3, backblaze-b2, cloudflare-r2, or vercel-blob.',
+      'STORAGE_PROVIDER must be aws-s3, backblaze-b2, cloudflare-r2, supabase-storage, or vercel-blob.',
     );
   }
 
@@ -119,10 +119,10 @@ export function getStorageProviderStatus() {
     preferred,
     active,
     availability: {
-      'supabase-storage': true,
       'aws-s3': isAwsS3StorageConfigured(),
       'backblaze-b2': isBackblazeB2StorageConfigured(),
       'cloudflare-r2': isCloudflareR2StorageConfigured(),
+      'supabase-storage': true,
       'vercel-blob': isVercelBlobConfigured(),
     },
   };
@@ -548,14 +548,14 @@ async function storeGeneratedAssetWithRetry(
 
 function createProvider(id: StorageProviderId): StorageProvider {
   switch (id) {
-    case 'supabase-storage':
-      return createSupabaseStorageProvider();
     case 'aws-s3':
       return createAwsS3StorageProvider();
     case 'backblaze-b2':
       return createBackblazeB2StorageProvider();
     case 'cloudflare-r2':
       return createCloudflareR2StorageProvider();
+    case 'supabase-storage':
+      return createSupabaseStorageProvider();
     case 'vercel-blob':
       return createVercelBlobProvider();
   }
@@ -571,10 +571,10 @@ function normalizePreference(
   const lower = value.trim().toLowerCase();
 
   if (
-    lower === 'supabase-storage' ||
     lower === 'aws-s3' ||
     lower === 'backblaze-b2' ||
     lower === 'cloudflare-r2' ||
+    lower === 'supabase-storage' ||
     lower === 'vercel-blob'
   ) {
     return lower;

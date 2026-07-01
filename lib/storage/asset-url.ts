@@ -60,10 +60,10 @@ export async function resolveAssetUrl(
 
 function isStorageProviderId(value: string): value is StorageProviderId {
   return (
-    value === 'supabase-storage' ||
     value === 'aws-s3' ||
     value === 'backblaze-b2' ||
     value === 'cloudflare-r2' ||
+    value === 'supabase-storage' ||
     value === 'vercel-blob'
   );
 }

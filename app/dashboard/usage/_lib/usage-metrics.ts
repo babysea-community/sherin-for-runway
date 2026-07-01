@@ -196,10 +196,6 @@ function formatInferenceProvider(provider: string) {
 }
 
 function formatStorageProvider(provider: string) {
-  if (provider === 'supabase-storage') {
-    return 'Supabase Storage';
-  }
-
   if (provider === 'aws-s3') {
     return 'AWS S3';
   }
@@ -210,6 +206,10 @@ function formatStorageProvider(provider: string) {
 
   if (provider === 'cloudflare-r2') {
     return 'Cloudflare R2';
+  }
+
+  if (provider === 'supabase-storage') {
+    return 'Supabase Storage';
   }
 
   if (provider === 'vercel-blob') {

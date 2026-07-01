@@ -8,10 +8,10 @@ import { resolve } from 'node:path';
 const ENV_FILES = ['.env.local', '.env'];
 const INFERENCE_PROVIDERS = new Set(['runway', 'babysea']);
 const STORAGE_PROVIDERS = new Set([
-  'supabase-storage',
   'aws-s3',
   'backblaze-b2',
   'cloudflare-r2',
+  'supabase-storage',
   'vercel-blob',
 ]);
 const SHERIN_REPOSITORY_URL =
@@ -89,16 +89,16 @@ const BACKBLAZE_B2_BUCKET_NAME_ENV_NAMES = [
   'B2_BUCKET_NAME',
 ];
 const storageAvailability = {
-  'supabase-storage': true,
   'aws-s3': hasAll(storageRequirements['aws-s3']),
   'backblaze-b2': hasBackblazeB2Config(),
   'cloudflare-r2': hasAll(storageRequirements['cloudflare-r2']),
+  'supabase-storage': true,
   'vercel-blob': Boolean(optional('BLOB_READ_WRITE_TOKEN')),
 };
 
 if (preferredStorage && !STORAGE_PROVIDERS.has(preferredStorage)) {
   fail(
-    'STORAGE_PROVIDER must be supabase-storage, aws-s3, backblaze-b2, cloudflare-r2, or vercel-blob.',
+    'STORAGE_PROVIDER must be aws-s3, backblaze-b2, cloudflare-r2, supabase-storage, or vercel-blob.',
   );
 } else if (preferredStorage && !storageAvailability[preferredStorage]) {
   fail('Selected storage provider is missing required env values.');

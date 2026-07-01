@@ -41,7 +41,7 @@ Use this guide for changes inside the Sherin starter, especially owner auth, inf
 - Sherin is owner-only. The owner allowlist configured in `.env.example` gates dashboard access after Supabase Google OAuth.
 - `INFERENCE_PROVIDER=runway` uses direct Runway execution; `INFERENCE_PROVIDER=babysea` uses the BabySea SDK.
 - Keep every secret described in `.env.example` server-side unless the template explicitly marks it as public.
-- Storage provider choices are `supabase-storage`, `aws-s3`, `backblaze-b2`, `cloudflare-r2`, and `vercel-blob`; Supabase Storage is the default and fallback path.
+- Storage provider choices are `aws-s3`, `backblaze-b2`, `cloudflare-r2`, `supabase-storage`, and `vercel-blob`; Supabase Storage is the default and fallback path.
 - Use `ProtectedImage` for public homepage, dashboard screenshot, icon, and gallery image rendering. Do not reintroduce `next/image` for those assets unless explicitly requested.
 - On the public homepage, prefer solid paint for compact mobile cards, icon buttons, and link surfaces. Avoid stacking translucent backgrounds, rings, shadows, backdrop blur, transforms, or transitions on Android-sensitive surfaces.
 - Generation records, prompts, statuses, provider metadata, storage URLs, references, and profile state persist in Supabase behind RLS.

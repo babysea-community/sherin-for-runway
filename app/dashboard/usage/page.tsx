@@ -451,12 +451,6 @@ function StorageProviderValue({ provider }: { provider: string }) {
 }
 
 function storageProviderIcon(provider: string | null) {
-  if (provider === 'supabase-storage') {
-    return (
-      <InlineSupabaseStorage className="size-4 shrink-0" aria-hidden="true" />
-    );
-  }
-
   if (provider === 'aws-s3') {
     return <InlineAwsS3 className="size-4 shrink-0" aria-hidden="true" />;
   }
@@ -468,6 +462,12 @@ function storageProviderIcon(provider: string | null) {
   if (provider === 'cloudflare-r2') {
     return (
       <InlineCloudflareR2 className="size-4 shrink-0" aria-hidden="true" />
+    );
+  }
+
+  if (provider === 'supabase-storage') {
+    return (
+      <InlineSupabaseStorage className="size-4 shrink-0" aria-hidden="true" />
     );
   }
 
@@ -649,13 +649,6 @@ function normalizeStorageProvider(provider: string) {
     .toLowerCase()
     .replace(/\s*\(fallback\)\s*$/, '');
 
-  if (
-    normalizedProvider === 'supabase-storage' ||
-    normalizedProvider === 'supabase storage'
-  ) {
-    return 'supabase-storage';
-  }
-
   if (normalizedProvider === 'aws-s3' || normalizedProvider === 'aws s3') {
     return 'aws-s3';
   }
@@ -672,6 +665,13 @@ function normalizeStorageProvider(provider: string) {
     normalizedProvider === 'cloudflare r2'
   ) {
     return 'cloudflare-r2';
+  }
+
+  if (
+    normalizedProvider === 'supabase-storage' ||
+    normalizedProvider === 'supabase storage'
+  ) {
+    return 'supabase-storage';
   }
 
   if (
