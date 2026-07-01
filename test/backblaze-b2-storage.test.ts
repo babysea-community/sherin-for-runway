@@ -30,10 +30,16 @@ describe('Backblaze B2 native storage provider', () => {
       if (requestUrl.endsWith('/b2_authorize_account')) {
         return jsonResponse({
           accountId: 'account-id',
-          allowed: { bucketId: 'bucket-id', bucketName: 'the-blazer' },
-          apiUrl: 'https://api005.backblazeb2.com',
+          apiInfo: {
+            storageApi: {
+              apiUrl: 'https://api005.backblazeb2.com',
+              bucketId: 'bucket-id',
+              bucketName: 'the-blazer',
+              downloadUrl: 'https://f005.backblazeb2.com',
+            },
+          },
+          applicationKeyExpirationTimestamp: null,
           authorizationToken: 'account-token',
-          downloadUrl: 'https://f005.backblazeb2.com',
         });
       }
 
@@ -121,10 +127,16 @@ describe('Backblaze B2 native storage provider', () => {
       if (requestUrl.endsWith('/b2_authorize_account')) {
         return jsonResponse({
           accountId: 'account-id',
-          allowed: { bucketId: 'bucket-id', bucketName: 'the-blazer' },
-          apiUrl: 'https://api005.backblazeb2.com',
+          apiInfo: {
+            storageApi: {
+              apiUrl: 'https://api005.backblazeb2.com',
+              bucketId: 'bucket-id',
+              bucketName: 'the-blazer',
+              downloadUrl: 'https://f005.backblazeb2.com',
+            },
+          },
+          applicationKeyExpirationTimestamp: null,
           authorizationToken: 'account-token',
-          downloadUrl: 'https://f005.backblazeb2.com',
         });
       }
 
@@ -176,10 +188,16 @@ describe('Backblaze B2 native storage provider', () => {
 
         return jsonResponse({
           accountId: 'account-id',
-          allowed: { bucketId: 'bucket-id', bucketName: 'the-blazer' },
-          apiUrl: 'https://api005.backblazeb2.com',
+          apiInfo: {
+            storageApi: {
+              apiUrl: 'https://api005.backblazeb2.com',
+              bucketId: 'bucket-id',
+              bucketName: 'the-blazer',
+              downloadUrl: 'https://f005.backblazeb2.com',
+            },
+          },
+          applicationKeyExpirationTimestamp: null,
           authorizationToken: `account-token-${requestNumber}`,
-          downloadUrl: 'https://f005.backblazeb2.com',
         });
       }
 

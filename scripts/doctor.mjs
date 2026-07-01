@@ -802,7 +802,33 @@ async function authorizeBackblazeAccount(keyId, applicationKey) {
     },
   );
 
-  return readBackblazeJson(response, 'b2_authorize_account');
+  return normalizeBackblazeAuthorization(
+    await readBackblazeJson(response, 'b2_authorize_account'),
+  );
+}
+
+function normalizeBackblazeAuthorization(response) {
+  const storageApi = response.apiInfo?.storageApi;
+  const apiUrl = storageApi?.apiUrl ?? response.apiUrl;
+  const downloadUrl = storageApi?.downloadUrl ?? response.downloadUrl;
+
+  if (!apiUrl || !downloadUrl) {
+    throw new Error(
+      'Backblaze B2 authorization response did not include storage API endpoints.',
+    );
+  }
+
+  return {
+    accountId: response.accountId,
+    allowed: {
+      bucketId: storageApi?.bucketId ?? response.allowed?.bucketId ?? null,
+      bucketName:
+        storageApi?.bucketName ?? response.allowed?.bucketName ?? null,
+    },
+    apiUrl,
+    authorizationToken: response.authorizationToken,
+    downloadUrl,
+  };
 }
 
 async function resolveBackblazeBucket(authorization, bucketName) {

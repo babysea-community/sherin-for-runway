@@ -37,6 +37,25 @@ type BackblazeAuthorization = {
   downloadUrl: string;
 };
 
+type BackblazeAuthorizeResponse = {
+  accountId: string;
+  allowed?: {
+    bucketId?: string | null;
+    bucketName?: string | null;
+  };
+  apiInfo?: {
+    storageApi?: {
+      apiUrl?: string;
+      bucketId?: string | null;
+      bucketName?: string | null;
+      downloadUrl?: string;
+    };
+  };
+  apiUrl?: string;
+  authorizationToken: string;
+  downloadUrl?: string;
+};
+
 type BackblazeBucket = {
   bucketId: string;
   bucketName: string;
@@ -147,9 +166,11 @@ async function authorizeAccount({ forceRefresh = false } = {}) {
       },
     },
   );
-  const authorization = await readB2Json<BackblazeAuthorization>(
-    response,
-    'b2_authorize_account',
+  const authorization = normalizeAuthorization(
+    await readB2Json<BackblazeAuthorizeResponse>(
+      response,
+      'b2_authorize_account',
+    ),
   );
 
   cachedAuthorization = {
@@ -160,6 +181,32 @@ async function authorizeAccount({ forceRefresh = false } = {}) {
   cachedBuckets = new Map();
 
   return authorization;
+}
+
+function normalizeAuthorization(
+  response: BackblazeAuthorizeResponse,
+): BackblazeAuthorization {
+  const storageApi = response.apiInfo?.storageApi;
+  const apiUrl = storageApi?.apiUrl ?? response.apiUrl;
+  const downloadUrl = storageApi?.downloadUrl ?? response.downloadUrl;
+
+  if (!apiUrl || !downloadUrl) {
+    throw new Error(
+      'Backblaze B2 authorization response did not include storage API endpoints.',
+    );
+  }
+
+  return {
+    accountId: response.accountId,
+    allowed: {
+      bucketId: storageApi?.bucketId ?? response.allowed?.bucketId ?? null,
+      bucketName:
+        storageApi?.bucketName ?? response.allowed?.bucketName ?? null,
+    },
+    apiUrl,
+    authorizationToken: response.authorizationToken,
+    downloadUrl,
+  };
 }
 
 async function resolveBucket(bucketName: string) {
