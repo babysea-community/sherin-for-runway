@@ -7,6 +7,7 @@ import { resolveRunwayModelConfig } from './models';
 import { assertRunwaySemanticParams } from './semantic-lady';
 import type {
   InferenceByokParams,
+  InferenceCancelResult,
   InferenceProvider,
   InferenceRequest,
   InferenceResult,
@@ -56,6 +57,9 @@ export function createRunwayProvider(): InferenceProvider {
       const value = metadata.runway_task_id;
 
       return typeof value === 'string' && value.length > 0 ? value : null;
+    },
+    async cancel(providerGenerationId: string): Promise<InferenceCancelResult> {
+      return cancelRunwayTask(providerGenerationId, apiKey);
     },
     prepareRequest({ formData, request }) {
       const modelConfig = resolveRunwayModelConfig(request.model);
@@ -633,6 +637,57 @@ async function pollRunwayTask(taskId: string, apiKey: string) {
   }
 
   throw buildRunwayPollTimeoutError(lastStatus);
+}
+
+async function cancelRunwayTask(
+  taskId: string,
+  apiKey: string,
+): Promise<InferenceCancelResult> {
+  if (!taskId) {
+    return {
+      attempted: false,
+      acknowledged: false,
+      error: 'Missing Runway task id.',
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `${RUNWAY_BASE_URL}/v1/tasks/${encodeURIComponent(taskId)}`,
+      {
+        method: 'DELETE',
+        headers: runwayHeaders(apiKey),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      },
+    );
+
+    // Runway can only cancel QUEUED tasks; a running task returns an error and
+    // a 404 means the task already completed or expired. Both are best-effort
+    // no-ops so the owner-side cancel still proceeds.
+    if (response.status === 404) {
+      return {
+        attempted: true,
+        acknowledged: false,
+        error: 'Runway task already completed or not found.',
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        attempted: true,
+        acknowledged: false,
+        error: `Runway cancel failed (${response.status}): ${await safeText(response)}`,
+      };
+    }
+
+    return { attempted: true, acknowledged: true };
+  } catch (error) {
+    return {
+      attempted: true,
+      acknowledged: false,
+      error: error instanceof Error ? error.message : 'Runway cancel failed.',
+    };
+  }
 }
 
 function firstRunwayOutput(response: RunwayTaskResponse) {

@@ -460,6 +460,8 @@ async function fetchGeneratedAsset(url: URL) {
         return response;
       }
 
+      await response.body?.cancel().catch(() => {});
+
       const downloadError = new Error(
         `Could not download generated asset: ${response.status}`,
       );

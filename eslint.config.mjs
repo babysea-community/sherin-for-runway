@@ -68,7 +68,11 @@ export default [
       ...nextPlugin.configs['core-web-vitals'].rules,
       '@typescript-eslint/no-unused-vars': [
         'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        {
+          argsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+          varsIgnorePattern: '^_',
+        },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       // The starter intentionally renders provider-signed URLs directly so

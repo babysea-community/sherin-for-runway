@@ -10,6 +10,8 @@ const B2_API_VERSION = 'v3';
 const AUTH_CACHE_TTL_MS = 23 * 60 * 60 * 1000;
 const DOWNLOAD_AUTH_TTL_SECONDS = 60 * 60;
 const UPLOAD_URL_ATTEMPTS = 5;
+const B2_API_TIMEOUT_MS = 30_000;
+const B2_UPLOAD_TIMEOUT_MS = 5 * 60_000;
 const KEY_ID_ENV_NAMES = ['BACKBLAZE_B2_KEY_ID', 'B2_KEY_ID'] as const;
 const APPLICATION_KEY_ENV_NAMES = [
   'BACKBLAZE_B2_APPLICATION_KEY',
@@ -164,6 +166,7 @@ async function authorizeAccount({ forceRefresh = false } = {}) {
       headers: {
         Authorization: `Basic ${Buffer.from(`${keyId}:${applicationKey}`).toString('base64')}`,
       },
+      signal: AbortSignal.timeout(B2_API_TIMEOUT_MS),
     },
   );
   const authorization = normalizeAuthorization(
@@ -304,6 +307,7 @@ async function uploadFile(upload: BackblazeUploadUrl, payload: StoreInput) {
       'X-Bz-File-Name': encodeB2Path(payload.key),
     },
     method: 'POST',
+    signal: AbortSignal.timeout(B2_UPLOAD_TIMEOUT_MS),
   });
 
   return readB2Json<BackblazeUploadResponse>(response, 'b2_upload_file');
@@ -403,6 +407,7 @@ async function callB2Api<T>(
         'Content-Type': 'application/json',
       },
       method: 'POST',
+      signal: AbortSignal.timeout(B2_API_TIMEOUT_MS),
     },
   );
 

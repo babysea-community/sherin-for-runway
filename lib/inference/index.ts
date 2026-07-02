@@ -10,6 +10,7 @@ import {
 import { createByokProvider, isByokProviderConfigured } from './byok-provider';
 
 export type { InferenceProvider, InferenceProviderId } from './types';
+export type { InferenceCancelResult } from './types';
 export type { InferenceRequest, InferenceResult } from './types';
 
 /**

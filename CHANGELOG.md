@@ -7,6 +7,7 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 ### Added
 
 - Add optional Backblaze B2 storage support for generated media and reference assets.
+- Cancel provider-side work when the owner cancels an active generation: Runway tasks are canceled through the Runway API and BabySea generations through the SDK (best-effort) before the generation is marked failed.
 
 ### Changed
 
@@ -21,6 +22,9 @@ All notable changes will be documented here. The format follows [Keep a Changelo
 - Accept standard Backblaze `B2_KEY_ID`, `B2_APP_KEY`, and `B2_BUCKET_NAME` env aliases and refresh stale Backblaze Native API account tokens before falling back to Supabase Storage.
 - Read the Backblaze B2 endpoints from the v3 `b2_authorize_account` response (`apiInfo.storageApi`) so bucket lookups and uploads no longer fail with an undefined URL and silently fall back to Supabase Storage.
 - Display generated media and reference assets stored in a private Backblaze B2 bucket by adding the Backblaze download host to the image and media Content-Security-Policy allowlists.
+- Time out Backblaze B2 authorize, upload, and control-plane API requests so a stalled B2 endpoint can no longer hang media uploads or signed-URL generation.
+- Release failed asset-download response bodies between retries to avoid leaking connections when a provider asset URL returns an error.
+- Give generated video players an accessible name for screen readers.
 - Ignore stale form values that are outside the active Runway model schema.
 - Omit empty video input values from BYOK submissions so image-only Runway model paths do not receive unsupported schema fields.
 - Preserve durable input reference assets after terminal generation states so the References dashboard keeps displaying uploaded and URL-based inputs.
