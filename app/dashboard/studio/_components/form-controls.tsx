@@ -177,7 +177,7 @@ function ModelVendorIcon({ modelId }: { modelId: string }) {
 
   return (
     <span className="flex size-5 shrink-0 items-center justify-center rounded bg-[#48d1cc1a]">
-      <InlineRunwayLight className="h-2.5 w-3.5 shrink-0" aria-hidden="true" />
+      <InlineRunwayLight className="size-3.5 shrink-0" aria-hidden="true" />
     </span>
   );
 }
