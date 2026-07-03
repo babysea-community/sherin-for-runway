@@ -12,7 +12,7 @@ import type {
 describe('Runway provider', () => {
   beforeEach(() => {
     process.env.RUNWAYML_API_SECRET = 'runway_test_key';
-    delete process.env.RUNWAY_API_KEY;
+    delete process.env.RUNWAY_API_SECRET;
     delete process.env.INFERENCE_POLL_TIMEOUT_MS;
   });
 

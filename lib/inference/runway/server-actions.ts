@@ -770,7 +770,7 @@ function buildRunwayPollTimeoutError(lastStatus: string) {
 
 function readRunwayApiKey() {
   return (
-    getOptionalEnv('RUNWAYML_API_SECRET') ?? getOptionalEnv('RUNWAY_API_KEY')
+    getOptionalEnv('RUNWAYML_API_SECRET') ?? getOptionalEnv('RUNWAY_API_SECRET')
   );
 }
 

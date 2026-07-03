@@ -45,7 +45,7 @@ variables:
   NEXT_PUBLIC_SUPABASE_PUBLIC_KEY: ci_supabase_public_key
   SUPABASE_SECRET_KEY: ci_supabase_secret_key
   INFERENCE_PROVIDER: runway
-  RUNWAYML_API_SECRET: ci_runway_api_key
+  RUNWAYML_API_SECRET: ci_runway_api_secret
   BABYSEA_API_KEY: ci_babysea_api_key
   BABYSEA_API_BASE_URL: https://api.us.babysea.ai
   STORAGE_PROVIDER: supabase-storage
