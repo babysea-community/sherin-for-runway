@@ -134,21 +134,21 @@ BabySea model schemas are published at [babysea.ai/model-schema](https://babysea
 
 Use [`.env.example`](.env.example) as the source of truth for storage provider, quota, worker, and monitoring configuration.
 
-Supabase Storage is the default and fallback storage path. AWS S3, Backblaze B2, Cloudflare R2, and Vercel Blob are available when you want generated media in your own bucket or blob store. Leave the Backblaze B2 env values blank unless you intentionally set `STORAGE_PROVIDER=backblaze-b2`.
+Supabase Storage is the default and fallback storage path. AWS S3, Backblaze B2, Cloudflare R2, and Vercel Blob are available when you want generated media in your own bucket or blob store.
 
 ## Supported models
 
-Supported model names and provider fields are registered in [`lib/model-family.ts`](lib/model-family.ts), [`lib/inference/runway/models.ts`](lib/inference/runway/models.ts), and [`lib/inference/babysea/models.ts`](lib/inference/babysea/models.ts).
+The catalog below lists models available through BYOK and/or BabySea, as indicated by their mode options. BYOK requires the corresponding provider key. Model IDs and provider fields are registered in [`lib/model-family.ts`](lib/model-family.ts) and [`lib/inference/runway/family.ts`](lib/inference/runway/family.ts). `BYOK/BabySea` indicates that the model is supported by BabySea, as shown in the [BabySea model schemas](https://babysea.ai/model-schema).
 
-| Model name               | Model ID                   |
-| :----------------------- | :------------------------- |
-| Runway Act Two           | `runway/act-two`           |
-| Runway Aleph 2           | `runway/aleph-2`           |
-| Runway Gen-4.5           | `runway/gen-4.5`           |
-| Runway Gen-4 Aleph       | `runway/gen-4-aleph`       |
-| Runway Gen-4 Image       | `runway/gen-4-image`       |
-| Runway Gen-4 Image Turbo | `runway/gen-4-image-turbo` |
-| Runway Gen-4 Turbo       | `runway/gen-4-turbo`       |
+| No  | Inference Providers | Model ID                   | Type  | Mode Options |
+| :-- | :------------------ | :------------------------- | :---: | :----------- |
+| 1   | Runway              | `runway/gen-4-image`       | Image | BYOK         |
+| 2   | Runway              | `runway/gen-4-image-turbo` | Image | BYOK         |
+| 3   | Runway              | `runway/act-two`           | Video | BYOK         |
+| 4   | Runway              | `runway/aleph-2`           | Video | BYOK         |
+| 5   | Runway              | `runway/gen-4-aleph`       | Video | BYOK         |
+| 6   | Runway              | `runway/gen-4-turbo`       | Video | BYOK         |
+| 7   | Runway              | `runway/gen-4.5`           | Video | BYOK         |
 
 ## Workspace
 
