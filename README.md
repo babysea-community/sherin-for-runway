@@ -4,7 +4,7 @@
 
 # Sherin for Runway
 
-Private workspace for generative media with own key, domain, and storage.
+A self-hosted private workspace for generative media, built for creators and developers who want more ownership over their creative workflow, powered by Runway models.
 
 ### Own key. Own domain. Own storage.
 
