@@ -138,17 +138,17 @@ Supabase Storage is the default and fallback storage path. AWS S3, Backblaze B2,
 
 ## Supported models
 
-The catalog below lists models available through BYOK and/or BabySea, as indicated by their mode options. BYOK requires the corresponding provider key. Model IDs and provider fields are registered in [`lib/model-family.ts`](lib/model-family.ts) and [`lib/inference/runway/family.ts`](lib/inference/runway/family.ts). `BYOK/BabySea` indicates that the model is supported by BabySea, as shown in the [BabySea model schemas](https://babysea.ai/model-schema).
+In the table, `BYOK` means a model is available only through the provider key; `BYOK/BabySea` means the exact model ID is available in both modes. Model IDs and provider fields are registered in [`lib/model-family.ts`](lib/model-family.ts) and [`lib/inference/runway/family.ts`](lib/inference/runway/family.ts). See the [BabySea model schemas](https://babysea.ai/model-schema).
 
 | No  | Inference Providers | Model ID                   | Type  | Mode Options |
 | :-- | :------------------ | :------------------------- | :---: | :----------- |
-| 1   | Runway              | `runway/gen-4-image`       | Image | BYOK         |
-| 2   | Runway              | `runway/gen-4-image-turbo` | Image | BYOK         |
+| 1   | Runway              | `runway/gen-4-image`       | Image | BYOK/BabySea |
+| 2   | Runway              | `runway/gen-4-image-turbo` | Image | BYOK/BabySea |
 | 3   | Runway              | `runway/act-two`           | Video | BYOK         |
 | 4   | Runway              | `runway/aleph-2`           | Video | BYOK         |
-| 5   | Runway              | `runway/gen-4-aleph`       | Video | BYOK         |
-| 6   | Runway              | `runway/gen-4-turbo`       | Video | BYOK         |
-| 7   | Runway              | `runway/gen-4.5`           | Video | BYOK         |
+| 5   | Runway              | `runway/gen-4-aleph`       | Video | BYOK/BabySea |
+| 6   | Runway              | `runway/gen-4-turbo`       | Video | BYOK/BabySea |
+| 7   | Runway              | `runway/gen-4.5`           | Video | BYOK/BabySea |
 
 ## Workspace
 
